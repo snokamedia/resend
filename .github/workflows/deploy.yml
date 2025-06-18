@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:  # This enables manual triggering
 
 jobs:
   build:
@@ -60,14 +61,3 @@ jobs:
           tag_name: ${{ steps.semantic.outputs.new_release_version }}
           files: |
             dist/send-emails-with-resend.zip
-
-      - name: WordPress Plugin Deploy
-        id: deploy
-        if: steps.semantic.outputs.new_release_published == 'true'
-        uses: 10up/action-wordpress-plugin-deploy@2.2.2
-        env:
-          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
-          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
-          SLUG: send-emails-with-resend
-          VERSION: ${{ steps.semantic.outputs.new_release_version }}
-          BUILD_DIR: dist/send-emails-with-resend
