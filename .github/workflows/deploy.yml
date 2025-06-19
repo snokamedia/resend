@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: dev
-          fetch-depth: 0  # Required for semantic-release to analyze commits
+          fetch-depth: 0  # Required for semantic-release to analyze commit history
 
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -38,14 +38,12 @@ jobs:
       - name: Semantic release
         id: semantic
         uses: cycjimmy/semantic-release-action@v4
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           semantic_version: 23
-          extra_plugins: |
-            @semantic-release/git
-          branches: |
+          branches: |-
             ["dev"]
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set env
         if: steps.semantic.outputs.new_release_published == 'true'
