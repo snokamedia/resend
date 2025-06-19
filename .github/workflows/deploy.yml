@@ -39,7 +39,7 @@ jobs:
         uses: cycjimmy/semantic-release-action@v4
         with:
           semantic_version: 23
-          branches: "['dev']"  # Fixed: Properly formatted as a stringified array
+          branches: "dev"  # Simplified to single branch string
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
