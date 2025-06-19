@@ -3,7 +3,7 @@ name: Deploy
 on:
   push:
     branches:
-      - dev  # Changed to match your working branch
+      - dev
   workflow_dispatch:
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: dev  # Ensure the correct branch is checked out
+          ref: dev
 
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -39,8 +39,7 @@ jobs:
         uses: cycjimmy/semantic-release-action@v4
         with:
           semantic_version: 23
-          branches: | 
-            ['dev']  # Match the branch you're using
+          branches: ["dev"]  # Fixed: Pass as an array
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
