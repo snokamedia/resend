@@ -4,7 +4,7 @@
  * Description:       Send emails using the Resend PHP SDK
  * Requires at least: 6.0.0
  * Requires PHP:      8.1
- * Version:           0.0.0-development
+ * Version:           2.0.1-development
  * Author:            CloudCatch LLC
  * Author URI:        https://cloudcatch.io
  * License:           GPL v2 or later

@@ -191,18 +191,26 @@ class Resend_PHPMailer extends \PHPMailer\PHPMailer\PHPMailer {
 	 */
 	protected function resendSend( string $header, string $body ): bool {
 		try {
-			$email = $this->resend()->emails->send(
-				array(
-					'from'        => $this->formatFrom(),
-					'subject'     => $this->Subject,
-					'html'        => $this->Body,
-					'to'          => $this->formatRecipients(),
-					'bcc'         => $this->formatRecipients( 'bcc' ),
-					'cc'          => $this->formatRecipients( 'cc' ),
-					'reply_to'    => $this->formatRecipients( 'ReplyTo' ),
-					'attachments' => $this->formatAttachments(),
-				)
-			)->toArray();
+			$logData = [
+				'from' => $this->formatFrom(),
+				'subject' => $this->Subject,
+				'to' => $this->formatRecipients(),
+				'has_attachment' => !empty($this->attachment),
+				'initiated_at' => current_time('mysql', true),
+			];
+			$emailData = [
+				'from' => $this->formatFrom(),
+				'subject' => $this->Subject,
+				'html' => $this->Body,
+				'to' => $this->formatRecipients(),
+				'bcc' => $this->formatRecipients('bcc'),
+				'cc' => $this->formatRecipients('cc'),
+				'reply_to' => $this->formatRecipients('ReplyTo'),
+				'attachments' => $this->formatAttachments(),
+			];
+			$email = $this->resend()->emails->send($emailData)->toArray();
+			$logData['resend_id'] = $email['id'];
+			do_action('resend_after_send_log', $logData);
 		} catch ( \Exception $e ) {
 			$email = array(
 				'message' => $e->getMessage(),
