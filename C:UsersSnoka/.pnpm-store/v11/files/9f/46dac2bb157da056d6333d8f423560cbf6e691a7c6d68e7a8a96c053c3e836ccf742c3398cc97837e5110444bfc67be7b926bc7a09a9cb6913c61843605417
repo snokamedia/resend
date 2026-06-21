@@ -1,4 +1,0 @@
-//#region src/commands/make/component.d.ts
-declare function makeComponent(filePath?: string): Promise<void>;
-//#endregion
-export { makeComponent as default };

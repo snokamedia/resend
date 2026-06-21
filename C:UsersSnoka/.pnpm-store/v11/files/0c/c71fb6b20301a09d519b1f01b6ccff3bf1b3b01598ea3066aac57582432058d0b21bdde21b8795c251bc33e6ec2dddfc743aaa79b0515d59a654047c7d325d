@@ -1,6 +1,0 @@
-import { MaizzleConfig } from "../types/config.js";
-//#region src/config/defaults.d.ts
-declare const defaults: MaizzleConfig;
-//#endregion
-export { defaults };
-//# sourceMappingURL=defaults.d.ts.map

@@ -1,5 +1,0 @@
-//#region src/commands/make/scaffold.d.ts
-declare function scaffold(filePath: string, stubName: string): Promise<void>;
-declare function onCancel(): void;
-//#endregion
-export { onCancel, scaffold };

@@ -1,8 +1,0 @@
-import { ChildNode } from "domhandler";
-import { DomSerializerOptions } from "dom-serializer";
-
-//#region src/utils/ast/serializer.d.ts
-declare function serialize(dom: ChildNode[], options?: DomSerializerOptions): string;
-//#endregion
-export { serialize };
-//# sourceMappingURL=serializer.d.ts.map

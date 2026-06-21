@@ -1,6 +1,0 @@
-//#region src/tests/render/_helpers.d.ts
-declare function createTempProject(): string;
-declare function writeSfc(dir: string, path: string, content: string): void;
-//#endregion
-export { createTempProject, writeSfc };
-//# sourceMappingURL=_helpers.d.ts.map

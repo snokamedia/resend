@@ -1,5 +1,0 @@
-//#region src/utils/detect.d.ts
-declare function isLaravel(cwd?: string): boolean;
-//#endregion
-export { isLaravel };
-//# sourceMappingURL=detect.d.ts.map

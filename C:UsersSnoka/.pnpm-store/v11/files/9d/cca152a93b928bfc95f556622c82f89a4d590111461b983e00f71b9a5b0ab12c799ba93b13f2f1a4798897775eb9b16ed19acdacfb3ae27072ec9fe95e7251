@@ -1,4 +1,0 @@
-//#region src/commands/make/layout.d.ts
-declare function makeLayout(filePath?: string): Promise<void>;
-//#endregion
-export { makeLayout as default };

@@ -1,8 +1,0 @@
-import { Renderer } from "./createRenderer.js";
-
-//#region src/render/active.d.ts
-declare function setActiveRenderer(renderer: Renderer | null): void;
-declare function getActiveRenderer(): Renderer | null;
-//#endregion
-export { getActiveRenderer, setActiveRenderer };
-//# sourceMappingURL=active.d.ts.map

@@ -1,7 +1,0 @@
-import { ChildNode, DomHandlerOptions } from "domhandler";
-
-//#region src/utils/ast/parser.d.ts
-declare function parse(html: string, options?: DomHandlerOptions): ChildNode[];
-//#endregion
-export { parse };
-//# sourceMappingURL=parser.d.ts.map

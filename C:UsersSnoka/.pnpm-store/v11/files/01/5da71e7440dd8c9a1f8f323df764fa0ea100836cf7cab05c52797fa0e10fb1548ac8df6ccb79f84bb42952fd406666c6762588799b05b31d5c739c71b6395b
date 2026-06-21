@@ -1,5 +1,0 @@
-//#region src/plaintext.d.ts
-declare function createPlaintext(html: string, options?: Record<string, unknown>): string;
-//#endregion
-export { createPlaintext };
-//# sourceMappingURL=plaintext.d.ts.map

@@ -1,2 +1,0 @@
-import { AttributesConfig, CaniemailClient, ChecksConfig, ComponentSource, CssConfig, EntitiesConfig, FilterFunction, FiltersConfig, HtmlConfig, MaizzleConfig, MarkdownConfig, PlaintextConfig, PostcssConfig, TransformerToggles, UrlConfig, UrlQuery, UrlQueryOptions } from "./config.js";
-export type { AttributesConfig, CaniemailClient, ChecksConfig, ComponentSource, CssConfig, EntitiesConfig, FilterFunction, FiltersConfig, HtmlConfig, MaizzleConfig, MarkdownConfig, PlaintextConfig, PostcssConfig, TransformerToggles, UrlConfig, UrlQuery, UrlQueryOptions };

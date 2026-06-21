@@ -1,6 +1,0 @@
-//#region src/composables/renderContext.ts
-const RenderContextKey = Symbol.for("maizzle.renderContext");
-//#endregion
-export { RenderContextKey };
-
-//# sourceMappingURL=renderContext.js.map

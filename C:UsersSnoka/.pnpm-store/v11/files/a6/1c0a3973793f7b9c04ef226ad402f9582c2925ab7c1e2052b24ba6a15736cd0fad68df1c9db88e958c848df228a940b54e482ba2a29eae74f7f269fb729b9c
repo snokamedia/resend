@@ -1,7 +1,0 @@
-//#region src/commands/new.d.ts
-declare function newProject(starterArg?: string, dirArg?: string, options?: {
-  install?: boolean;
-  pm?: string;
-}): Promise<void>;
-//#endregion
-export { newProject as default };

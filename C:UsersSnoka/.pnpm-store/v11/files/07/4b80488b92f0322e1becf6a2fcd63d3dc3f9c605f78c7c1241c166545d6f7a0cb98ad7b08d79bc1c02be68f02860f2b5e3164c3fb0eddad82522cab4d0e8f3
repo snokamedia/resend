@@ -1,8 +1,0 @@
-//#region src/utils/url.d.ts
-declare const defaultTags: Record<string, string[]>;
-declare const urlAttributes: string[];
-declare function isAbsoluteUrl(url: string): boolean;
-declare function processSrcset(srcset: string, baseUrl: string): string;
-//#endregion
-export { defaultTags, isAbsoluteUrl, processSrcset, urlAttributes };
-//# sourceMappingURL=url.d.ts.map
