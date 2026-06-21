@@ -1,0 +1,37 @@
+import { CssConfig } from "../types/config.js";
+import { ChildNode } from "domhandler";
+
+//#region src/transformers/safeSelectors.d.ts
+/**
+ * Safe selectors transformer.
+ *
+ * Replaces unsafe characters (`:`, `/`, `[`, `]`, etc.) in:
+ * - CSS selectors inside `<style>` tags
+ * - HTML `class` attributes
+ *
+ * This makes Tailwind utility classes like `sm:text-base` safe for
+ * email clients that cannot handle escaped characters in class names.
+ *
+ * Enabled by default. Disable by setting `css.safe` to `false`.
+ * Customize replacements by passing a `Record<string, string>` — user
+ * values are merged on top of the defaults.
+ *
+ * @param html   HTML string to transform.
+ * @param config CSS config (see {@link CssConfig}).
+ * @returns      The transformed HTML string.
+ *
+ * @example
+ * import { safeSelectors } from '@maizzle/framework'
+ *
+ * const out = safeSelectors('<div class="sm:text-base"></div>')
+ */
+declare function safeSelectors(html: string, config?: CssConfig): string;
+/**
+ * DOM-form of {@link safeSelectors} used by the internal transformer pipeline.
+ * Takes a parsed DOM, returns a parsed DOM — avoids redundant
+ * serialize/parse round-trips when chained with other transformers.
+ */
+declare function safeSelectorsDom(dom: ChildNode[], config?: CssConfig): ChildNode[];
+//#endregion
+export { safeSelectors, safeSelectorsDom };
+//# sourceMappingURL=safeSelectors.d.ts.map

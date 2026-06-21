@@ -1,0 +1,43 @@
+import { ChildNode } from "domhandler";
+import { Opts } from "email-comb";
+
+//#region src/transformers/purgeCss.d.ts
+/**
+ * Options for the `purgeCss` transformer.
+ */
+interface PurgeCssOptions extends Partial<Omit<Opts, 'whitelist'>> {
+  /**
+   * Selectors to preserve regardless of whether they're matched in the
+   * markup. Appended to Maizzle's built-in safelist (Gmail, Apple Mail,
+   * Outlook.com hooks, etc). Mapped to email-comb's `whitelist` option.
+   */
+  safelist?: string[];
+}
+/**
+ * Remove unused CSS from an HTML string.
+ *
+ * Uses `email-comb` together with a DOM-aware deep-purge step to strip
+ * CSS selectors and class/id references that are not matched anywhere
+ * in the document body.
+ *
+ * @param html    HTML string to transform.
+ * @param options Email-comb options plus a Maizzle `safelist`.
+ * @returns       The transformed HTML string.
+ *
+ * @example
+ * import { purgeCss } from '@maizzle/framework'
+ *
+ * const out = purgeCss('<style>.a{}.b{}</style><p class="a">x</p>', {
+ *   safelist: ['.keep'],
+ * })
+ */
+declare function purgeCss(html: string, options?: PurgeCssOptions): string;
+/**
+ * DOM-form of {@link purgeCss} used by the internal transformer
+ * pipeline. Takes a parsed DOM, returns a parsed DOM — avoids redundant
+ * serialize/parse round-trips when chained with other transformers.
+ */
+declare function purgeCssDom(dom: ChildNode[], options?: PurgeCssOptions): ChildNode[];
+//#endregion
+export { PurgeCssOptions, purgeCss, purgeCssDom };
+//# sourceMappingURL=purgeCss.d.ts.map

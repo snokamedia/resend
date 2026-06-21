@@ -1,0 +1,10 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+//#region src/utils/detect.ts
+function isLaravel(cwd = process.cwd()) {
+	return existsSync(resolve(cwd, "artisan"));
+}
+//#endregion
+export { isLaravel };
+
+//# sourceMappingURL=detect.js.map

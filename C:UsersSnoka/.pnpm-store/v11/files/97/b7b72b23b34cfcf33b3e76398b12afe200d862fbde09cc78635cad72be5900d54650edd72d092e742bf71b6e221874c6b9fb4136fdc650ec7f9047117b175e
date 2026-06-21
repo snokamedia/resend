@@ -1,0 +1,18 @@
+import { MaizzleConfig } from "../../types/config.js";
+import postcss from "postcss";
+
+//#region src/plugins/postcss/tailwindCleanup.d.ts
+/**
+ * Removes CSS rules whose every comma-separated selector part starts with
+ * one of the configured prefixes (e.g. ':host', ':lang'). Rules with mixed
+ * selectors have the unwanted parts stripped.
+ *
+ * Also removes entire at-rules by name (e.g. '@layer', '@property').
+ *
+ * Intended to clean up Tailwind's compiled output after lightningcss has
+ * flattened all modern CSS syntax.
+ */
+declare function tailwindCleanup(config: MaizzleConfig): postcss.Plugin[];
+//#endregion
+export { tailwindCleanup };
+//# sourceMappingURL=tailwindCleanup.d.ts.map

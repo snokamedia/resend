@@ -1,0 +1,13 @@
+//#region src/utils/cloneConfig.d.ts
+/**
+ * Deep-clone plain objects so per-template config mutations stay isolated.
+ *
+ * Arrays, functions, and class instances (Date, RegExp, Vite plugins, …) pass
+ * through by reference — only nested plain-object props are copied, which is
+ * what `beforeRender` mutations (`config.url.base`, `config.css.inline`, …)
+ * touch. Sharing arrays by reference matches the parallel worker's merge.
+ */
+declare function cloneConfig<T>(value: T): T;
+//#endregion
+export { cloneConfig };
+//# sourceMappingURL=cloneConfig.d.ts.map

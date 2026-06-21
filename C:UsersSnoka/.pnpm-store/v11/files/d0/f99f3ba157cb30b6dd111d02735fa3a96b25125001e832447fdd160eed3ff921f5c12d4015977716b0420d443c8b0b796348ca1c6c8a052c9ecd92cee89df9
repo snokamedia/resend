@@ -1,0 +1,25 @@
+import { ChildNode } from "domhandler";
+
+//#region src/transformers/sixHex.d.ts
+/**
+ * Convert 3-digit HEX color codes to 6-digit in `bgcolor` and `color`
+ * attributes, for better email client compatibility.
+ *
+ * @param html HTML string to transform.
+ * @returns    The transformed HTML string.
+ *
+ * @example
+ * import { sixHex } from '@maizzle/framework'
+ *
+ * const out = sixHex('<font color="#abc">x</font>')
+ */
+declare function sixHex(html: string): string;
+/**
+ * DOM-form of {@link sixHex} used by the internal transformer pipeline.
+ * Takes a parsed DOM, returns a parsed DOM — avoids redundant
+ * serialize/parse round-trips when chained with other transformers.
+ */
+declare function sixHexDom(dom: ChildNode[]): ChildNode[];
+//#endregion
+export { sixHex, sixHexDom };
+//# sourceMappingURL=sixHex.d.ts.map

@@ -1,0 +1,21 @@
+//#region src/composables/usePlaintext.d.ts
+interface UsePlaintextOptions {
+  extension?: string;
+  destination?: string;
+  options?: Record<string, unknown>;
+}
+/**
+ * Enable plaintext generation for the current email template.
+ *
+ * Usage in SFC <script setup>:
+ * ```ts
+ * usePlaintext()
+ * usePlaintext({ extension: 'text' })
+ * usePlaintext({ destination: '/custom/path' })
+ * usePlaintext({ options: { ignoreTags: ['br'] } })
+ * ```
+ */
+declare function usePlaintext(options?: UsePlaintextOptions): void;
+//#endregion
+export { UsePlaintextOptions, usePlaintext };
+//# sourceMappingURL=usePlaintext.d.ts.map

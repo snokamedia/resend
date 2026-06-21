@@ -1,0 +1,26 @@
+import { RenderContextKey } from "./renderContext.js";
+import { defu as defu$1 } from "defu";
+import { inject } from "vue";
+//#region src/composables/useBaseUrl.ts
+/**
+* Set the base URL for the current email template — same as
+* `config.url.base`, scoped to one SFC.
+*
+* Pass a string to prepend to all default tags/attributes, or an object
+* for fine-grained control (which tags/attributes, style tags, etc.).
+*
+* Usage in SFC <script setup>:
+* ```ts
+* useBaseUrl('https://cdn.example.com/emails/')
+* useBaseUrl({ url: 'https://cdn.example.com/', styleTag: true })
+* ```
+*/
+function useBaseUrl(value) {
+	const ctx = inject(RenderContextKey);
+	if (!ctx) return;
+	ctx.sfcConfig = defu$1({ url: { base: value } }, ctx.sfcConfig ?? {});
+}
+//#endregion
+export { useBaseUrl };
+
+//# sourceMappingURL=useBaseUrl.js.map

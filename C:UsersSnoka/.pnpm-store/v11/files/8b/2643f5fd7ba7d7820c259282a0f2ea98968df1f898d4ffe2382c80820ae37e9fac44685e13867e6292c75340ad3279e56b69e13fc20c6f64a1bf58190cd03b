@@ -1,0 +1,9 @@
+//#region src/index.d.ts
+interface Framework {
+  serve: (options?: any) => Promise<any>;
+  build: (options?: any) => Promise<any>;
+  prepare: (options?: any) => Promise<any>;
+}
+declare function bootstrap(framework?: Framework): Promise<void>;
+//#endregion
+export { bootstrap as default };

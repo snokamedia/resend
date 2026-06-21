@@ -1,0 +1,72 @@
+import { parse } from "../utils/ast/parser.js";
+import { walk } from "../utils/ast/walker.js";
+import { serialize } from "../utils/ast/serializer.js";
+import "../utils/ast/index.js";
+//#region src/transformers/removeAttributes.ts
+/**
+* Remove HTML attributes from elements.
+*
+* Empty `style` and `class` attributes are always stripped, regardless of
+* what you pass. Your entries are appended to those defaults.
+*
+* - `'data-src'` — remove when the value is empty.
+* - `{ name: 'id', value: 'test' }` — remove when the value matches exactly.
+* - `{ name: 'data-id', value: /\d/ }` — remove when the value matches the regex.
+*
+* @param html       HTML string to transform.
+* @param attributes Additional attribute-removal rules to apply on top of the defaults.
+* @returns          The transformed HTML string.
+*
+* @example
+* import { removeAttributes } from '@maizzle/framework'
+*
+* const out = removeAttributes('<p style="" data-x="">x</p>', [
+*   'data-x',
+*   { name: 'role', value: 'none' },
+* ])
+*/
+function removeAttributes(html, attributes = []) {
+	return serialize(removeAttributesDom(parse(html), attributes));
+}
+/**
+* DOM-form of {@link removeAttributes} used by the internal transformer
+* pipeline. Takes a parsed DOM, returns a parsed DOM — avoids redundant
+* serialize/parse round-trips when chained with other transformers.
+*/
+function removeAttributesDom(dom, attributes = []) {
+	const attributesToRemove = [
+		"style",
+		"class",
+		...attributes
+	];
+	walk(dom, (node) => {
+		const el = node;
+		if (!el.attribs) return;
+		for (const attr of attributesToRemove) {
+			let attrName;
+			let attrValue;
+			if (typeof attr === "string") {
+				attrName = attr;
+				attrValue = true;
+			} else {
+				attrName = attr.name;
+				attrValue = attr.value;
+			}
+			const currentValue = el.attribs[attrName];
+			if (currentValue === void 0) continue;
+			let shouldRemove = false;
+			if (typeof attrValue === "boolean") shouldRemove = currentValue === "" || currentValue === true;
+			else if (typeof attrValue === "string") shouldRemove = currentValue === attrValue;
+			else if (attrValue instanceof RegExp) {
+				attrValue.lastIndex = 0;
+				shouldRemove = attrValue.test(currentValue);
+			} else shouldRemove = currentValue === "";
+			if (shouldRemove) delete el.attribs[attrName];
+		}
+	});
+	return dom;
+}
+//#endregion
+export { removeAttributes, removeAttributesDom };
+
+//# sourceMappingURL=removeAttributes.js.map

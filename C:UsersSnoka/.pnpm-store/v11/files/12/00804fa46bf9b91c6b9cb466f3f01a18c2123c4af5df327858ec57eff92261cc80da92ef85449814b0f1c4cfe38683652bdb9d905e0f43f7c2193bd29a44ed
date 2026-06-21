@@ -1,0 +1,14 @@
+import { Parser } from "htmlparser2";
+import { DomHandler } from "domhandler";
+//#region src/utils/ast/parser.ts
+function parse(html, options = {}) {
+	const handler = new DomHandler();
+	const parser = new Parser(handler, options);
+	parser.write(html);
+	parser.end();
+	return handler.dom;
+}
+//#endregion
+export { parse };
+
+//# sourceMappingURL=parser.js.map

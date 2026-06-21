@@ -1,0 +1,17 @@
+//#region src/prepare.d.ts
+interface PrepareOptions {
+  /** Path to a Maizzle config file. */
+  config?: string;
+}
+/**
+ * Generate IDE type definitions in `.maizzle/`
+ * (`auto-imports.d.ts` and `components.d.ts`).
+ *
+ * Intended as a `postinstall` step so editors get autocompletion before the
+ * user runs `dev` or `build`. Spins up the renderer with `dts: true`, runs
+ * a trivial render to trigger the unplugin scans, then shuts down.
+ */
+declare function prepare(options?: PrepareOptions): Promise<void>;
+//#endregion
+export { PrepareOptions, prepare };
+//# sourceMappingURL=prepare.d.ts.map

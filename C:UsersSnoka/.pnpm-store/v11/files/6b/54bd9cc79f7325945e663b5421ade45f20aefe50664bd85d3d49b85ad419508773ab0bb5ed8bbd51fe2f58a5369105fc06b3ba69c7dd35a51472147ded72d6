@@ -1,0 +1,6 @@
+//#region src/transformers/filters/defaults.d.ts
+type FilterFunction = (str: string, value: string) => string;
+declare const defaults: Record<string, FilterFunction>;
+//#endregion
+export { FilterFunction, defaults };
+//# sourceMappingURL=defaults.d.ts.map

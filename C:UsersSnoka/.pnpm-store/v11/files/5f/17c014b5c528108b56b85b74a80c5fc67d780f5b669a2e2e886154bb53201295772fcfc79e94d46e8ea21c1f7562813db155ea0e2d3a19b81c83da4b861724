@@ -1,0 +1,4 @@
+//#region src/commands/make/template.d.ts
+declare function makeTemplate(filePath?: string): Promise<void>;
+//#endregion
+export { makeTemplate as default };

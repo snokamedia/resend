@@ -1,0 +1,19 @@
+import { RenderContextKey } from "./renderContext.js";
+import { inject } from "vue";
+//#region src/composables/useDoctype.ts
+/**
+* Set the doctype for the current email template.
+*
+* Usage in SFC <script setup>:
+* ```ts
+* useDoctype('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">')
+* ```
+*/
+function useDoctype(doctype) {
+	const ctx = inject(RenderContextKey);
+	if (ctx) ctx.doctype = doctype;
+}
+//#endregion
+export { useDoctype };
+
+//# sourceMappingURL=useDoctype.js.map

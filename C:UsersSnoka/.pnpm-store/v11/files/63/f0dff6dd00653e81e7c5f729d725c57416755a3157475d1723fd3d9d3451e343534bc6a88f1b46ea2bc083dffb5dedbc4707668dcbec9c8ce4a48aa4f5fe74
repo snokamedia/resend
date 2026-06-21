@@ -1,0 +1,89 @@
+import { parse } from "../../utils/ast/parser.js";
+import { serialize } from "../../utils/ast/serializer.js";
+import "../../utils/ast/index.js";
+import { defaults } from "./defaults.js";
+import { Text } from "domhandler";
+//#region src/transformers/filters/index.ts
+/**
+* Process children before parents so nested filter elements work correctly.
+*/
+function walkBottomUp(nodes, callback) {
+	for (const node of nodes.slice()) {
+		if ("children" in node && node.children?.length) walkBottomUp(node.children, callback);
+		callback(node);
+	}
+}
+/**
+* Apply transformation functions to the content of elements that have
+* matching filter attributes. Multiple filters on the same element are
+* executed in the order the attributes are defined.
+*
+* Default filters include string manipulation (`uppercase`, `lowercase`,
+* `trim`, etc.), math operations (`plus`, `minus`, `multiply`, etc.),
+* and more.
+*
+* @param html    HTML string to transform.
+* @param custom  Custom filters to merge with the defaults. Pass `false`
+*                to disable all filters (including the defaults).
+* @returns       The transformed HTML string.
+*
+* @example
+* import { filters } from '@maizzle/framework'
+*
+* // Defaults only
+* const out = filters('<p uppercase>foo</p>') // → '<p>FOO</p>'
+*
+* // Add a custom filter
+* filters('<p suffix=" world">hello</p>', {
+*   suffix: (s, v) => s + v,
+* })
+*
+* // Disable all filters
+* filters('<p uppercase>foo</p>', false)
+*/
+function filters(html, custom = {}) {
+	return serialize(filtersDom(parse(html), custom));
+}
+/**
+* DOM-form of {@link filters} used by the internal transformer pipeline.
+* Takes a parsed DOM, returns a parsed DOM — avoids redundant
+* serialize/parse round-trips when chained with other transformers.
+*/
+function filtersDom(dom, custom = {}) {
+	if (custom === false) return dom;
+	const allFilters = {
+		...defaults,
+		...custom
+	};
+	const filterNames = new Set(Object.keys(allFilters));
+	walkBottomUp(dom, (node) => {
+		const el = node;
+		if (!el.attribs) return;
+		const matched = [];
+		for (const attr of Object.keys(el.attribs)) if (filterNames.has(attr)) matched.push({
+			name: attr,
+			value: el.attribs[attr]
+		});
+		if (matched.length === 0) return;
+		let content = serialize(el.children);
+		for (const { name, value } of matched) {
+			content = allFilters[name](content, value);
+			delete el.attribs[name];
+		}
+		if (content === "") el.children = [];
+		else if (/<[a-z/!]/i.test(content)) {
+			const newChildren = parse(content);
+			for (const child of newChildren) child.parent = el;
+			el.children = newChildren;
+		} else {
+			const textNode = new Text(content);
+			textNode.parent = el;
+			el.children = [textNode];
+		}
+	});
+	return dom;
+}
+//#endregion
+export { filters, filtersDom };
+
+//# sourceMappingURL=index.js.map

@@ -1,0 +1,59 @@
+import { resolveConfigObject } from "../config/index.js";
+import { normalizeComponentSources } from "../utils/componentSources.js";
+import { createRenderer } from "./createRenderer.js";
+import { runTransformers } from "../transformers/index.js";
+import { createPlaintext } from "../plaintext.js";
+import { stripForHtml, stripForPlaintext } from "../utils/output-markers.js";
+import { getActiveRenderer } from "./active.js";
+import { extname, resolve } from "pathe";
+import defu from "defu";
+//#region src/render/index.ts
+/**
+* Render a Vue SFC email template to a fully-transformed HTML string.
+* Accepts a file path or a raw SFC source string.
+*/
+async function render(template, config) {
+	if (template == null) throw new Error(`render() received ${template}. If you used \`import X from './x.vue'\`, Node cannot load .vue files natively — pass the path string instead: render('./x.vue').`);
+	if (typeof template !== "string" && typeof template !== "object" && typeof template !== "function") throw new TypeError(`render() expected a file path or SFC source string, got ${typeof template}.`);
+	const resolvedConfig = resolveConfigObject(config);
+	/**
+	* Reuse a renderer started by the Vite plugin when one is active.
+	* Spinning up a fresh Vite SSR server inside a host Vite dev process
+	* (e.g. TanStack Start) collides on env wiring and throws
+	* "outsideEmitter undefined".
+	*/
+	const active = getActiveRenderer();
+	const renderer = active ?? await createRenderer({
+		markdown: resolvedConfig.markdown,
+		root: resolvedConfig.root,
+		componentDirs: normalizeComponentSources(resolvedConfig.components?.source, process.cwd()),
+		vite: resolvedConfig.vite
+	});
+	try {
+		const isFile = typeof template === "string" && [".vue", ".md"].includes(extname(template)) && !template.includes("\n");
+		const rendered = await renderer.render(isFile ? resolve(template) : template, resolvedConfig);
+		let html = rendered.html;
+		const doctype = rendered.doctype ?? rendered.templateConfig.doctype ?? "<!DOCTYPE html>";
+		if (rendered.templateConfig.useTransformers !== false) html = await runTransformers(html, rendered.templateConfig, isFile ? resolve(template) : void 0, doctype, rendered.tailwindBlocks);
+		if (doctype) html = `${doctype}\n${html}`;
+		const globalPlaintext = rendered.templateConfig.plaintext;
+		const sfcPlaintext = rendered.plaintext;
+		let plaintextResult;
+		if (globalPlaintext || sfcPlaintext) {
+			const globalCfg = typeof globalPlaintext === "object" ? globalPlaintext : {};
+			const stripOptions = defu(sfcPlaintext?.options, globalCfg.options);
+			plaintextResult = createPlaintext(stripForPlaintext(html), stripOptions);
+		}
+		return {
+			html: stripForHtml(html),
+			config: rendered.templateConfig,
+			plaintext: plaintextResult
+		};
+	} finally {
+		if (!active) await renderer.close();
+	}
+}
+//#endregion
+export { createRenderer, render };
+
+//# sourceMappingURL=index.js.map

@@ -1,0 +1,18 @@
+import { Plugin } from "vite";
+
+//#region src/render/plugins/rowSourceLocation.d.ts
+/**
+ * Vite plugin that injects `data-maizzle-loc="<file>:<line>"` into every
+ * `<Row>`/`<row>` opening tag in user templates.
+ *
+ * Used by Row.vue's runtime to point the user at the exact line in their
+ * template when they misuse Row (e.g. without a Column child).
+ *
+ * Only transforms inside `<template>` blocks of SFCs (or the entire file
+ * for `.md` templates) so `<Row>` mentions in `<script>` blocks (e.g. in
+ * string literals or comments) are left untouched.
+ */
+declare function rowSourceLocation(): Plugin;
+//#endregion
+export { rowSourceLocation };
+//# sourceMappingURL=rowSourceLocation.d.ts.map

@@ -1,0 +1,22 @@
+import { onCancel, scaffold } from "./scaffold.mjs";
+import color from "picocolors";
+import * as p from "@clack/prompts";
+//#region src/commands/make/config.ts
+async function makeConfig(name) {
+	if (name) {
+		await scaffold(name, "config.ts");
+		return;
+	}
+	p.intro(`${color.bgCyan(color.black(" maizzle make:config "))}`);
+	await scaffold((await p.group({ name: () => p.text({
+		message: "File name",
+		placeholder: "i.e. maizzle.config.ts",
+		validate: (value) => {
+			if (!value) return "Please enter a file name.";
+			if (value.includes(" ")) return "Use - or . instead of spaces.";
+			if (!/\.(js|ts)$/.test(value)) return "File must end in .js or .ts";
+		}
+	}) }, { onCancel })).name, "config.ts");
+}
+//#endregion
+export { makeConfig as default };

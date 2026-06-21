@@ -1,0 +1,25 @@
+//#region src/composables/usePreheader.d.ts
+interface UsePreheaderOptions {
+  /**
+   * Explicit number of filler sequences to render. When omitted, the count
+   * is auto-derived to fill the 200-char inbox preview budget.
+   */
+  spaces?: number;
+}
+/**
+ * Set the preheader text for the current email template.
+ *
+ * Injects a hidden `<div>` at the start of `<body>` with the preheader text
+ * followed by filler characters that prevent email clients from pulling
+ * in body content after the preheader.
+ *
+ * Usage in SFC <script setup>:
+ * ```ts
+ * usePreheader('Thanks for signing up!')
+ * usePreheader('Welcome!', { spaces: 50 })
+ * ```
+ */
+declare function usePreheader(text: string, options?: UsePreheaderOptions): void;
+//#endregion
+export { UsePreheaderOptions, usePreheader };
+//# sourceMappingURL=usePreheader.d.ts.map

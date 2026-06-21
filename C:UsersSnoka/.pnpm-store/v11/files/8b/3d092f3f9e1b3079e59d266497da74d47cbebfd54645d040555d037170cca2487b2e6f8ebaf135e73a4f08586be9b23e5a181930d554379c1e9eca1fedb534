@@ -1,0 +1,15 @@
+import { FontRegistration } from "../composables/renderContext.js";
+import { ChildNode } from "domhandler";
+
+//#region src/render/injectFonts.d.ts
+/**
+ * Inject font `<link>` tags into `<head>` and merge `@theme` declarations
+ * into the template's existing Tailwind `<style>` block (so the
+ * `font-{slug}` utilities are generated in the same compilation unit
+ * as the Tailwind import). Without a Tailwind import, emits plain
+ * `.font-{slug}` class rules so the utility still works.
+ */
+declare function injectFonts(dom: ChildNode[], fonts: FontRegistration[], parseDom: (html: string) => ChildNode[], walk: (ast: ChildNode[], cb: (n: ChildNode) => void) => void): void;
+//#endregion
+export { injectFonts };
+//# sourceMappingURL=injectFonts.d.ts.map

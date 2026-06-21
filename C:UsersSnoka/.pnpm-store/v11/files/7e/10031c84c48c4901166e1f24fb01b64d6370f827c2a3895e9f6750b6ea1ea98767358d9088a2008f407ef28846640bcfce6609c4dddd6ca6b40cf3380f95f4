@@ -1,0 +1,68 @@
+import { parse } from "./ast/parser.js";
+import { serialize } from "./ast/serializer.js";
+import "./ast/index.js";
+//#region src/utils/output-markers.ts
+/**
+* Sentinel attributes the `<Plaintext>` and `<NotPlaintext>`
+* components stamp on their wrapper `<div>` so the build step
+* can route their slot content to one output and remove it
+* entirely from the other.
+*/
+const PLAINTEXT_ONLY_ATTR = "data-maizzle-plaintext-only";
+const HTML_ONLY_ATTR = "data-maizzle-html-only";
+const isElement = (n) => n.type === "tag";
+/**
+* Apply marker rules to a forest of nodes.
+*
+* - `drop` removes the matched element and its descendants.
+* - `unwrap` removes the wrapper element but keeps its children,
+*   splicing them into the parent's child list in place.
+*
+* Non-matching elements recurse so nested markers are handled.
+*/
+function applyRules(nodes, rules) {
+	const out = [];
+	for (const n of nodes) {
+		if (isElement(n)) {
+			const match = rules.find(([attr]) => n.attribs?.[attr] !== void 0);
+			if (match) {
+				const [, op] = match;
+				if (op === "drop") continue;
+				out.push(...applyRules(n.children ?? [], rules));
+				continue;
+			}
+			if (n.children?.length) n.children = applyRules(n.children, rules);
+		}
+		out.push(n);
+	}
+	return out;
+}
+const hasMarkers = (html) => html.includes("data-maizzle-plaintext-only") || html.includes("data-maizzle-html-only");
+/**
+* Strip output markers for the HTML output: drop plaintext-only
+* subtrees entirely, unwrap html-only wrappers (keep children).
+*
+* When no markers are present, the input is returned unchanged so
+* the post-transformer formatting (prettify, XHTML self-closing
+* slashes, etc.) survives intact for the typical case.
+*/
+function stripForHtml(html) {
+	if (!hasMarkers(html)) return html;
+	const isXhtml = /<!DOCTYPE\s+[^>]*xhtml/i.test(html);
+	return serialize(applyRules(parse(html), [[PLAINTEXT_ONLY_ATTR, "drop"], [HTML_ONLY_ATTR, "unwrap"]]), { selfClosingTags: isXhtml });
+}
+/**
+* Strip output markers for the plaintext source: drop html-only
+* subtrees entirely, unwrap plaintext-only wrappers (keep children).
+*
+* The result is fed to `createPlaintext`, which then strips all
+* remaining tags via `string-strip-html`.
+*/
+function stripForPlaintext(html) {
+	if (!hasMarkers(html)) return html;
+	return serialize(applyRules(parse(html), [[HTML_ONLY_ATTR, "drop"], [PLAINTEXT_ONLY_ATTR, "unwrap"]]));
+}
+//#endregion
+export { HTML_ONLY_ATTR, PLAINTEXT_ONLY_ATTR, stripForHtml, stripForPlaintext };
+
+//# sourceMappingURL=output-markers.js.map

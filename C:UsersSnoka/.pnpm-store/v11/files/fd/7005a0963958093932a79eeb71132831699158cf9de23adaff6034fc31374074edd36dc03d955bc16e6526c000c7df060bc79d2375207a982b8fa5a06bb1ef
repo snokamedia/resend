@@ -1,0 +1,37 @@
+import { EventMap, EventName } from "../events/index.js";
+import { MaizzleConfig } from "../types/config.js";
+import { UsePlaintextOptions } from "./usePlaintext.js";
+import { InjectionKey } from "vue";
+
+//#region src/composables/renderContext.d.ts
+interface FontRegistration {
+  family: string;
+  slug: string;
+  declaration: string;
+  url: string;
+}
+interface TailwindBlock {
+  id: string;
+  /** Optional raw CSS from the component's `#config` slot. */
+  css?: string;
+}
+interface RenderContext {
+  doctype?: string;
+  preheader?: {
+    text: string;
+    fillerCount: number;
+  };
+  sfcConfig?: MaizzleConfig;
+  sfcEventHandlers: Array<{
+    name: EventName;
+    handler: EventMap[EventName];
+  }>;
+  plaintext?: UsePlaintextOptions;
+  outputPath?: string;
+  fonts?: FontRegistration[];
+  tailwindBlocks?: TailwindBlock[];
+}
+declare const RenderContextKey: InjectionKey<RenderContext>;
+//#endregion
+export { FontRegistration, RenderContext, RenderContextKey, TailwindBlock };
+//# sourceMappingURL=renderContext.d.ts.map

@@ -1,0 +1,42 @@
+import { parse } from "../utils/ast/parser.js";
+import { walk } from "../utils/ast/walker.js";
+import { serialize } from "../utils/ast/serializer.js";
+import "../utils/ast/index.js";
+import { conv } from "color-shorthand-hex-to-six-digit";
+//#region src/transformers/sixHex.ts
+const targets = new Set(["bgcolor", "color"]);
+/**
+* Convert 3-digit HEX color codes to 6-digit in `bgcolor` and `color`
+* attributes, for better email client compatibility.
+*
+* @param html HTML string to transform.
+* @returns    The transformed HTML string.
+*
+* @example
+* import { sixHex } from '@maizzle/framework'
+*
+* const out = sixHex('<font color="#abc">x</font>')
+*/
+function sixHex(html) {
+	return serialize(sixHexDom(parse(html)));
+}
+/**
+* DOM-form of {@link sixHex} used by the internal transformer pipeline.
+* Takes a parsed DOM, returns a parsed DOM — avoids redundant
+* serialize/parse round-trips when chained with other transformers.
+*/
+function sixHexDom(dom) {
+	walk(dom, (node) => {
+		const el = node;
+		if (!el.attribs) return;
+		for (const attr of targets) {
+			const value = el.attribs[attr];
+			if (value) el.attribs[attr] = conv(value);
+		}
+	});
+	return dom;
+}
+//#endregion
+export { sixHex, sixHexDom };
+
+//# sourceMappingURL=sixHex.js.map

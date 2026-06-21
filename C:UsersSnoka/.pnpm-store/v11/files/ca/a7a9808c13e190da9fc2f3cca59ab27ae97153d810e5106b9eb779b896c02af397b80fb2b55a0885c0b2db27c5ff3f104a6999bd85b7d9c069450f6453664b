@@ -1,0 +1,468 @@
+import { MaizzleConfigKey } from "../composables/useConfig.js";
+import { RenderContextKey } from "../composables/renderContext.js";
+import { isLaravel } from "../utils/detect.js";
+import { rowSourceLocation } from "./plugins/rowSourceLocation.js";
+import { rawExtract } from "./plugins/rawExtract.js";
+import { codeBlockExtract } from "./plugins/codeBlockExtract.js";
+import { markdownExtract } from "./plugins/markdownExtract.js";
+import { componentNameFromPath } from "../utils/componentSources.js";
+import { shikiToCodeBlock } from "../components/utils.js";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { glob, globSync } from "tinyglobby";
+import { defu as defu$1 } from "defu";
+import { createSSRApp } from "vue";
+import { createServer, mergeConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
+import Markdown from "unplugin-vue-markdown/vite";
+import AutoImport from "unplugin-auto-import/vite";
+import Components from "unplugin-vue-components/vite";
+import { unheadVueComposablesImports } from "@unhead/vue";
+import { renderToString } from "vue/server-renderer";
+import { createHead } from "@unhead/vue/server";
+//#region src/render/createRenderer.ts
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const vuePkgDir = dirname(fileURLToPath(import.meta.resolve("vue/package.json")));
+const vueServerRendererPkgDir = dirname(fileURLToPath(import.meta.resolve("@vue/server-renderer/package.json")));
+const unheadVuePkgDir = resolve(dirname(fileURLToPath(import.meta.resolve("@unhead/vue"))), "..");
+const vueRouterPkgDir = dirname(fileURLToPath(import.meta.resolve("vue-router/package.json")));
+/**
+* Lightweight Vite SSR loader for rendering Vue SFC email templates.
+*
+* Uses only Vue + unplugin for component/auto-import resolution.
+* Tailwind CSS compilation is handled by the transformer pipeline.
+*/
+async function createRenderer(options = {}) {
+	const { dts = false, markdown: markdownOptionsRaw, root = process.cwd(), componentDirs = [], vite: userViteConfig } = options;
+	const { shikiTheme = "github-light", markdownSetup: userMarkdownSetup, ...restMarkdownConfig } = markdownOptionsRaw ?? {};
+	/**
+	* Sources without an explicit prefix get registered via unplugin's `dirs`
+	* (folder name auto-namespaces). Sources with an explicit `prefix` are
+	* registered through a custom resolver below so we fully control naming.
+	*/
+	const dirSources = componentDirs.filter((s) => s.prefix === void 0);
+	const prefixedSources = componentDirs.filter((s) => s.prefix !== void 0);
+	/**
+	* Absolute component dirs — used to skip auto-wrapping `.md` files that
+	* are imported as reusable components (vs. entry-point email templates).
+	*/
+	const componentDirsAbs = [resolve(root, "components"), ...componentDirs.map((s) => s.path)];
+	const dtsDir = isLaravel() ? resolve(process.cwd(), "resources/js/types/maizzle") : resolve(root, ".maizzle");
+	/**
+	* Built-in framework components live at this path. When a user provides
+	* a top-level file with the same (PascalCased) basename, drop the
+	* built-in from unplugin's scan so the user's component is the only
+	* candidate. This avoids the "naming conflicts" warning and the
+	* alphabetical-glob ordering pitfall that decides who wins when
+	* both are present in `dirs`.
+	*/
+	const frameworkComponentsDir = resolve(__dirname, "../components");
+	function topLevelBasenamesLower(dir) {
+		if (!existsSync(dir)) return /* @__PURE__ */ new Set();
+		const files = globSync(["*.vue", "*.md"], {
+			cwd: dir,
+			absolute: false
+		});
+		return new Set(files.map((f) => f.replace(/\.(vue|md)$/, "").toLowerCase()));
+	}
+	const frameworkFiles = globSync(["*.vue", "*.md"], {
+		cwd: frameworkComponentsDir,
+		absolute: false
+	});
+	const frameworkByLower = new Map(frameworkFiles.map((f) => [f.replace(/\.(vue|md)$/, "").toLowerCase(), f]));
+	const shadowedNames = /* @__PURE__ */ new Set();
+	for (const dir of [resolve(root, "components"), ...dirSources.map((s) => s.path)]) for (const lower of topLevelBasenamesLower(dir)) if (frameworkByLower.has(lower)) shadowedNames.add(lower);
+	const frameworkExcludes = [...shadowedNames].map((lower) => `${frameworkComponentsDir}/${frameworkByLower.get(lower)}`);
+	/**
+	* Pre-scanned name → absolute-path map for prefixed sources. Rebuilt
+	* on file add/unlink via the watcher hook plugin further down. Drives
+	* the runtime resolver and the d.ts we emit for IDE autocompletion.
+	*/
+	const prefixedNameMap = /* @__PURE__ */ new Map();
+	async function scanPrefixedSources() {
+		prefixedNameMap.clear();
+		const seen = /* @__PURE__ */ new Map();
+		for (const source of prefixedSources) {
+			const files = await glob(["**/*.vue", "**/*.md"], {
+				cwd: source.path,
+				absolute: true
+			});
+			for (const file of files) {
+				const name = componentNameFromPath({
+					filePath: file,
+					dirRoot: source.path,
+					prefix: source.prefix,
+					pathPrefix: source.pathPrefix
+				});
+				const existing = seen.get(name);
+				if (existing && existing !== file) throw new Error(`[maizzle] Component name collision: "${name}" resolved from both "${existing}" and "${file}". Rename one of the files or split them into separate sources with distinct prefixes.`);
+				seen.set(name, file);
+				prefixedNameMap.set(name, file);
+			}
+		}
+	}
+	await scanPrefixedSources();
+	const prefixedResolver = (name) => prefixedNameMap.get(name);
+	/**
+	* unplugin-vue-components' own d.ts only covers components found via
+	* `dirs`; its `types` option emits named-import entries which break
+	* for SFC `default` exports. Write a sibling d.ts for prefixed
+	* sources so editors get correct autocompletion via TypeScript
+	* interface merging on `vue.GlobalComponents`.
+	*/
+	const prefixedDtsPath = resolve(dtsDir, "prefixed-components.d.ts");
+	function writePrefixedDts() {
+		if (!dts) return;
+		if (prefixedNameMap.size === 0) {
+			if (existsSync(prefixedDtsPath)) rmSync(prefixedDtsPath);
+			return;
+		}
+		const dtsBase = dirname(prefixedDtsPath);
+		mkdirSync(dtsBase, { recursive: true });
+		writeFileSync(prefixedDtsPath, `/* eslint-disable */\n// @ts-nocheck\n// biome-ignore lint: disable\n// oxlint-disable\n// Generated by Maizzle for prefixed component sources\n\nexport {}\n\n/* prettier-ignore */\ndeclare module 'vue' {\n  export interface GlobalComponents {\n${Array.from(prefixedNameMap.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([name, file]) => {
+			const relativePath = relative(dtsBase, file).replace(/\\/g, "/");
+			return `    ${name}: typeof import('${relativePath.startsWith(".") ? relativePath : `./${relativePath}`}')['default']`;
+		}).join("\n")}\n  }\n}\n`);
+	}
+	writePrefixedDts();
+	/**
+	* Watches prefixed source dirs and rebuilds {@link prefixedNameMap} when
+	* files are added/removed. Vite's watcher already covers `dirSources`
+	* via unplugin-vue-components' own filesystem hooks.
+	*/
+	const prefixedSourceWatcher = prefixedSources.length > 0 ? {
+		name: "maizzle:prefixed-component-watcher",
+		configureServer(server) {
+			for (const source of prefixedSources) server.watcher.add(source.path);
+			const refresh = async (file) => {
+				if (!prefixedSources.some((s) => file.startsWith(`${s.path}/`))) return;
+				if (!/\.(vue|md)$/.test(file)) return;
+				await scanPrefixedSources();
+				writePrefixedDts();
+			};
+			server.watcher.on("add", refresh);
+			server.watcher.on("unlink", refresh);
+		}
+	} : null;
+	const VIRTUAL_SFC_ID = "virtual:maizzle-sfc.vue";
+	let virtualSfcSource = "";
+	/**
+	* Per-render source overrides keyed by absolute template path. Lets the
+	* build's beforeRender event rewrite a template's source before compile
+	* while keeping the real file id — so relative imports, asset URLs and
+	* component resolution still resolve against the actual file location
+	* (which the virtual-SFC path can't do).
+	*/
+	const sourceOverrides = /* @__PURE__ */ new Map();
+	/**
+	* Never load the host project's vite.config.ts here. Doing so pulls
+	* every host plugin (Nitro, TanStack Start, the Maizzle plugin
+	* itself, …) into this isolated SSR pipeline, where they override
+	* env factories, re-trigger configureServer hooks, and break
+	* Vite's hot channel wiring. Users who need extra Vite plugins
+	* for SSR pass them explicitly via the `vite` option.
+	*/
+	const maizzleConfig = {
+		configFile: false,
+		plugins: [
+			rawExtract(),
+			codeBlockExtract(),
+			markdownExtract(),
+			rowSourceLocation(),
+			{
+				name: "maizzle:virtual-sfc",
+				resolveId(id) {
+					if (id === VIRTUAL_SFC_ID) return id;
+				},
+				load(id) {
+					if (id === VIRTUAL_SFC_ID) return virtualSfcSource;
+				}
+			},
+			{
+				name: "maizzle:source-override",
+				load(id) {
+					const override = sourceOverrides.get(id.split("?")[0]);
+					if (override !== void 0) return override;
+				}
+			},
+			vue({
+				include: [/\.vue$/, /\.md$/],
+				template: {
+					transformAssetUrls: false,
+					compilerOptions: { 
+					/**
+					* AMP4Email tags (<amp-carousel>, <amp-img>, <amp-list> ...)
+					* render verbatim — skip the component resolver. Users who
+					* want to wrap an amp tag in a Vue component should register
+					* it under a PascalCase name (e.g. `components/AmpCarousel.vue`
+					* → `<AmpCarousel>`).
+					*/
+isCustomElement: (tag) => tag.startsWith("amp-") }
+				}
+			}),
+			Markdown(defu$1(restMarkdownConfig, {
+				headEnabled: true,
+				wrapperDiv: false,
+				wrapperClasses: "prose",
+				wrapperComponent: (id, raw) => {
+					const layout = (raw.match(/^---\r?\n([\s\S]*?)\r?\n---/)?.[1])?.match(/^[ \t]*layout[ \t]*:[ \t]*['"]?([A-Za-z][\w-]*|false|none)['"]?[ \t]*$/m)?.[1];
+					if (layout === "false" || layout === "none") return null;
+					if (layout) return layout;
+					return componentDirsAbs.some((d) => id === d || id.startsWith(`${d}/`)) ? null : "MarkdownLayout";
+				},
+				markdownOptions: { async highlight(code, lang) {
+					const { codeToHtml } = await import("shiki");
+					try {
+						return await codeToHtml(code, {
+							lang,
+							theme: shikiTheme
+						});
+					} catch {
+						return "";
+					}
+				} },
+				/**
+				* Run the user's `markdownSetup` first (defu would otherwise drop the
+				* built-in one when both are functions), then always install the
+				* email-safe code-block wrapping on top — mirroring the `<Markdown>`
+				* component so `.md` templates and the component behave identically.
+				*/
+				async markdownSetup(md) {
+					await userMarkdownSetup?.(md);
+					const defaultFence = md.renderer.rules.fence;
+					md.renderer.rules.fence = (...args) => Promise.resolve(defaultFence(...args)).then(shikiToCodeBlock);
+					const defaultCodeBlock = md.renderer.rules.code_block;
+					md.renderer.rules.code_block = (...args) => shikiToCodeBlock(defaultCodeBlock(...args));
+				}
+			})),
+			AutoImport({
+				dirs: [resolve(__dirname, "../composables"), resolve(__dirname, "../filters")],
+				imports: ["vue", unheadVueComposablesImports],
+				/**
+				* unplugin-auto-import's default `include` doesn't match `.md`, so
+				* auto-imports (Vue, unhead and Maizzle composables/filters) were
+				* never injected into Markdown templates — `useConfig()` and friends
+				* threw at runtime. Extend the default list with `.md` (and its
+				* `?vue` script sub-requests) to mirror the `.md` coverage the
+				* Components plugin already declares below.
+				*/
+				include: [
+					/\.[jt]sx?$/,
+					/\.vue$/,
+					/\.vue\?vue/,
+					/\.md$/,
+					/\.md\?vue/
+				],
+				dts: dts ? resolve(dtsDir, "auto-imports.d.ts") : false
+			}),
+			Components({
+				extensions: ["vue", "md"],
+				include: [
+					/\.vue$/,
+					/\.vue\?vue/,
+					/\.md$/
+				],
+				dirs: [
+					frameworkComponentsDir,
+					resolve(root, "components"),
+					...dirSources.map((s) => s.path)
+				],
+				/**
+				* Drop built-in component files whose name the user has shadowed.
+				* This makes the user's version the only match — no "naming
+				* conflicts" warning, no glob-ordering games.
+				*/
+				globsExclude: frameworkExcludes,
+				directoryAsNamespace: true,
+				collapseSamePrefixes: true,
+				resolvers: prefixedSources.length > 0 ? [prefixedResolver] : void 0,
+				dts: dts ? resolve(dtsDir, "components.d.ts") : false
+			}),
+			...prefixedSourceWatcher ? [prefixedSourceWatcher] : []
+		],
+		resolve: { alias: {
+			"vue/server-renderer": resolve(vueServerRendererPkgDir, "dist/server-renderer.esm-bundler.js"),
+			"vue": resolve(vuePkgDir, "dist/vue.runtime.esm-bundler.js"),
+			"vue-router": vueRouterPkgDir,
+			"@unhead/vue/server": resolve(unheadVuePkgDir, "dist/server.mjs"),
+			"@unhead/vue": resolve(unheadVuePkgDir, "dist/index.mjs")
+		} },
+		server: {
+			middlewareMode: true,
+			hmr: false,
+			/**
+			* Watcher is required so unplugin-vue-components and unplugin-auto-import
+			* detect added/removed component files and rewrite their .d.ts on the fly.
+			* (We only render via SSR — HMR is off, but chokidar still drives plugins.)
+			*/
+			fs: { allow: [
+				process.cwd(),
+				root,
+				...componentDirs.map((s) => s.path),
+				vuePkgDir,
+				vueServerRendererPkgDir,
+				unheadVuePkgDir,
+				vueRouterPkgDir
+			] }
+		},
+		appType: "custom",
+		logLevel: "silent",
+		optimizeDeps: { noDiscovery: true }
+	};
+	const server = await createServer(userViteConfig ? mergeConfig(userViteConfig, maizzleConfig) : maizzleConfig);
+	return {
+		async render(input, config, opts) {
+			let component;
+			let configKey;
+			let contextKey;
+			if (typeof input === "string") {
+				/**
+				* String input goes through Vite — must use ssrLoadModule for
+				* injection keys so they share the same module instance as SFC.
+				*/
+				const configModule = await server.ssrLoadModule(resolve(__dirname, "../composables/useConfig"));
+				const contextModule = await server.ssrLoadModule(resolve(__dirname, "../composables/renderContext"));
+				configKey = configModule.MaizzleConfigKey;
+				contextKey = contextModule.RenderContextKey;
+				if (input.includes("<template") || input.includes("<script")) {
+					virtualSfcSource = input;
+					const mod = server.moduleGraph.getModuleById(VIRTUAL_SFC_ID);
+					if (mod) server.moduleGraph.invalidateModule(mod);
+					component = (await server.ssrLoadModule(VIRTUAL_SFC_ID)).default;
+				} else {
+					/**
+					* A beforeRender handler may have rewritten the source. Register it
+					* under the real path id and invalidate so ssrLoadModule compiles
+					* the override; clear + invalidate afterwards so the override never
+					* leaks into a later render of the same path.
+					*/
+					const hasOverride = opts?.source !== void 0;
+					if (hasOverride) {
+						sourceOverrides.set(input, opts.source);
+						const mod = await server.moduleGraph.getModuleByUrl(input);
+						if (mod) server.moduleGraph.invalidateModule(mod);
+					}
+					try {
+						component = (await server.ssrLoadModule(input)).default;
+					} finally {
+						if (hasOverride) {
+							sourceOverrides.delete(input);
+							const mod = await server.moduleGraph.getModuleByUrl(input);
+							if (mod) server.moduleGraph.invalidateModule(mod);
+						}
+					}
+				}
+			} else {
+				component = input;
+				configKey = MaizzleConfigKey;
+				contextKey = RenderContextKey;
+			}
+			const renderContext = {
+				doctype: void 0,
+				sfcConfig: void 0,
+				sfcEventHandlers: []
+			};
+			const head = createHead({ disableDefaults: true });
+			const app = createSSRApp(component);
+			app.use(head);
+			if (config.vue) {
+				const plugins = typeof config.vue.plugins === "function" ? config.vue.plugins() : config.vue.plugins ?? [];
+				for (const plugin of plugins) app.use(plugin);
+				for (const [name, directive] of Object.entries(config.vue.directives ?? {})) app.directive(name, directive);
+				Object.assign(app.config.globalProperties, config.vue.globalProperties);
+			}
+			app.provide(configKey, config);
+			app.provide(contextKey, renderContext);
+			const ssrContext = {};
+			let html = await renderToString(app, ssrContext);
+			const { headTags, bodyTags, bodyTagsOpen, htmlAttrs, bodyAttrs } = head.render();
+			if (htmlAttrs) html = html.replace(/<html([^>]*)>/, `<html$1 ${htmlAttrs}>`);
+			if (headTags) html = html.replace("</head>", `${headTags}\n</head>`);
+			if (bodyAttrs) html = html.replace(/<body([^>]*)>/, `<body$1 ${bodyAttrs}>`);
+			if (bodyTagsOpen) html = html.replace(/<body([^>]*)>/, `<body$1>\n${bodyTagsOpen}`);
+			if (bodyTags) html = html.replace("</body>", `${bodyTags}\n</body>`);
+			const hasTeleports = ssrContext.teleports && Object.keys(ssrContext.teleports).length > 0;
+			const hasFonts = (renderContext.fonts?.length ?? 0) > 0;
+			if (hasTeleports || hasFonts) {
+				const { parse: parseDom, serialize: serializeDom, walk } = await import("../utils/ast/index.js");
+				let dom = parseDom(html);
+				if (hasTeleports) for (const [rawTarget, content] of Object.entries(ssrContext.teleports)) {
+					if (!content) continue;
+					const prepend = rawTarget.endsWith(":start");
+					const target = prepend ? rawTarget.slice(0, -6) : rawTarget;
+					const targetChildren = parseDom(content);
+					walk(dom, (node) => {
+						const el = node;
+						if (!el.name) return;
+						if (target === el.name || target.startsWith("#") && el.attribs?.id === target.slice(1) || target.startsWith(".") && el.attribs?.class?.split(/\s+/).includes(target.slice(1))) {
+							for (const child of targetChildren) child.parent = el;
+							el.children = prepend ? [...targetChildren, ...el.children || []] : [...el.children || [], ...targetChildren];
+						}
+					});
+				}
+				if (hasFonts) {
+					const { injectFonts } = await import("./injectFonts.js");
+					injectFonts(dom, renderContext.fonts, parseDom, walk);
+				}
+				html = serializeDom(dom);
+			}
+			if (renderContext.preheader) {
+				const { text, fillerCount } = renderContext.preheader;
+				const previewHtml = `<div style="display:none">${text}${" ﻿͏ ".repeat(fillerCount)}\u00A0</div>`;
+				html = html.replace(/<body([^>]*)>/, `<body$1>${previewHtml}`);
+			}
+			/**
+			* Strip Vue SSR fragment markers + teleport anchor comments. These
+			* are rendering hygiene, not transformer concerns — must run
+			* regardless of `useTransformers` state. Fragment markers contain
+			* `-->`, which would prematurely terminate MSO conditional
+			* comments downstream.
+			*/
+			html = html.replaceAll("<!--[-->", "").replaceAll("<!--]-->", "").replaceAll("<!--teleport start anchor-->", "").replaceAll("<!--teleport anchor-->", "").replaceAll("<!--teleport start-->", "").replaceAll("<!--teleport end-->", "");
+			return {
+				html,
+				doctype: renderContext.doctype,
+				/**
+				* Layer sfcConfig over config — sfcConfig is a partial override
+				* emitted by composables (defineConfig, useTransformers, etc.).
+				* A naive replacement (`sfcConfig ?? config`) drops defaults
+				* from the resolved config when the SFC only sets a single
+				* key, since the composables' inject() of globalConfig can
+				* return `{}` in dev when ssrLoadModule and the SFC's
+				* auto-imported module resolve to different module
+				* instances (different Symbols).
+				*/
+				templateConfig: renderContext.sfcConfig ? defu$1(renderContext.sfcConfig, config) : config,
+				sfcEventHandlers: renderContext.sfcEventHandlers,
+				plaintext: renderContext.plaintext,
+				outputPath: renderContext.outputPath,
+				tailwindBlocks: renderContext.tailwindBlocks
+			};
+		},
+		async invalidate(filePath) {
+			const mod = await server.moduleGraph.getModuleByUrl(filePath);
+			if (mod) server.moduleGraph.invalidateModule(mod);
+		},
+		async invalidateAll() {
+			for (const mod of server.moduleGraph.idToModuleMap.values()) server.moduleGraph.invalidateModule(mod);
+		},
+		async close() {
+			await server.close();
+			/**
+			* unplugin-auto-import schedules a 500ms-throttled, fire-and-forget
+			* d.ts write on its first scan. server.close() doesn't drain that
+			* pending write, so callers tearing down the working dir right
+			* after close (tests, ephemeral build pipelines) can race the
+			* mkdir against a missing parent directory. Wait one throttle
+			* window past close so the lingering write resolves while
+			* the dir still exists.
+			*/
+			if (dts) await new Promise((resolve) => setTimeout(resolve, 600));
+		}
+	};
+}
+//#endregion
+export { createRenderer };
+
+//# sourceMappingURL=createRenderer.js.map

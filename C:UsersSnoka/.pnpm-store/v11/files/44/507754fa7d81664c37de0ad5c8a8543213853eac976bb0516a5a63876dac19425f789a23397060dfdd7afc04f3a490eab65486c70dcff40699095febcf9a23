@@ -1,0 +1,21 @@
+import { NormalizedComponentSource } from "../utils/componentSources.js";
+
+//#region src/server/sfc-utils.d.ts
+declare function isFrameworkComponent(file: string): boolean;
+interface SfcBlock {
+  content: string;
+  offset: number;
+}
+declare function parseSfcBlocks(source: string): {
+  template: SfcBlock | null;
+  styles: SfcBlock[];
+};
+/**
+ * Standard HTML elements — anything not in this set is treated as a component.
+ */
+declare const HTML_ELEMENTS: Set<string>;
+declare function findComponentTags(templateContent: string): string[];
+declare function buildComponentMap(root: string, componentDirs: NormalizedComponentSource[]): Promise<Map<string, string>>;
+//#endregion
+export { HTML_ELEMENTS, SfcBlock, buildComponentMap, findComponentTags, isFrameworkComponent, parseSfcBlocks };
+//# sourceMappingURL=sfc-utils.d.ts.map

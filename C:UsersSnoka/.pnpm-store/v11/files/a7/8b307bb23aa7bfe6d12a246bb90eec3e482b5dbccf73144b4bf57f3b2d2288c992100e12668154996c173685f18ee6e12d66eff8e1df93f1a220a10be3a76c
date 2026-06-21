@@ -1,0 +1,114 @@
+import { MaizzleConfig } from "../types/config.js";
+import { ParsedPath } from "node:path";
+
+//#region src/events/index.d.ts
+type EventName = 'beforeCreate' | 'beforeRender' | 'afterRender' | 'afterTransform' | 'afterBuild';
+/**
+ * Info about the template currently being processed, passed to per-template
+ * event handlers. `source` is the SFC file contents; `path` is the result of
+ * `path.parse(absolutePath)` — `{ root, dir, base, ext, name }`.
+ */
+interface TemplateInfo {
+  source: string;
+  path: ParsedPath;
+}
+interface EventMap {
+  beforeCreate: (params: {
+    config: MaizzleConfig;
+  }) => void | Promise<void>;
+  beforeRender: (params: {
+    config: MaizzleConfig;
+    template: TemplateInfo;
+  }) => string | void | Promise<string | void>;
+  afterRender: (params: {
+    config: MaizzleConfig;
+    template: TemplateInfo;
+    html: string;
+  }) => string | void | Promise<string | void>;
+  afterTransform: (params: {
+    config: MaizzleConfig;
+    template: TemplateInfo;
+    html: string;
+  }) => string | void | Promise<string | void>;
+  afterBuild: (params: {
+    files: string[];
+    config: MaizzleConfig;
+  }) => void | Promise<void>;
+}
+/**
+ * Central event manager that collects handlers from config and useEvent() calls.
+ *
+ * Handlers are run in order: config handler first, then SFC handlers in registration order.
+ * For events that return a value (beforeRender, afterRender, afterTransform),
+ * the returned value replaces the corresponding input for the next handler.
+ */
+declare class EventManager {
+  private handlers;
+  /**
+   * Snapshot of config-handler counts per event, captured at registerConfig().
+   * clearSfcHandlers() truncates each list back to this count, dropping
+   * any SFC-registered handlers that were appended after.
+   */
+  private configHandlerCount;
+  /**
+   * Register handlers from the Maizzle config.
+   */
+  registerConfig(config: MaizzleConfig): void;
+  /**
+   * Register a handler for an event (used by useEvent composable).
+   */
+  on<K extends EventName>(name: K, handler: EventMap[K]): void;
+  /**
+   * Fire beforeCreate — runs all handlers, config is mutated in place.
+   */
+  fireBeforeCreate(params: {
+    config: MaizzleConfig;
+  }): Promise<void>;
+  /**
+   * Fire beforeRender — if a handler returns a string, it replaces
+   * `template.source` for subsequent handlers and the renderer.
+   */
+  fireBeforeRender(params: {
+    config: MaizzleConfig;
+    template: TemplateInfo;
+  }): Promise<string>;
+  /**
+   * Fire afterRender — if a handler returns a string, it replaces `html`.
+   */
+  fireAfterRender(params: {
+    config: MaizzleConfig;
+    template: TemplateInfo;
+    html: string;
+  }): Promise<string>;
+  /**
+   * Fire afterTransform — if a handler returns a string, it replaces `html`.
+   */
+  fireAfterTransform(params: {
+    config: MaizzleConfig;
+    template: TemplateInfo;
+    html: string;
+  }): Promise<string>;
+  /**
+   * Fire afterBuild — runs all handlers with the file list.
+   */
+  fireAfterBuild(params: {
+    files: string[];
+    config: MaizzleConfig;
+  }): Promise<void>;
+  /**
+   * Drop SFC-registered handlers, keep config-registered ones.
+   *
+   * Per default, only clears events whose scope is per-template
+   * (`beforeRender`, `afterRender`, `afterTransform`). Build-scoped events
+   * (`afterBuild`) accumulate across all templates and fire once at end of
+   * build. Pass an explicit list to override.
+   */
+  clearSfcHandlers(events?: EventName[]): void;
+  /**
+   * Clear all handlers entirely.
+   */
+  clear(): void;
+}
+//#endregion
+export { EventManager, EventMap, EventName, TemplateInfo };
+//# sourceMappingURL=index.d.ts.map

@@ -1,0 +1,50 @@
+import { ComponentSource } from "../types/config.js";
+
+//#region src/utils/componentSources.d.ts
+/**
+ * Internal representation of a component source after defaults are
+ * resolved and `path` is made absolute. Always carries the same shape
+ * regardless of which user-facing form produced it.
+ */
+interface NormalizedComponentSource {
+  /** Absolute directory path. */
+  path: string;
+  /**
+   * Custom prefix prepended to resolved component names.
+   *   - `undefined` → use folder-name namespace (the `directoryAsNamespace`
+   *     behavior of unplugin-vue-components).
+   *   - `''` (empty string) → no prefix at all; use the bare filename.
+   *   - any other string → exact prefix.
+   */
+  prefix?: string;
+  /** Include intermediate subfolder names in the resolved name. */
+  pathPrefix: boolean;
+}
+/**
+ * Normalize a user-supplied `components.source` value into an array
+ * of absolute, fully-defaulted entries.
+ */
+declare function normalizeComponentSources(sources: ComponentSource | ComponentSource[] | undefined, cwd: string): NormalizedComponentSource[];
+interface ComponentNameOptions {
+  /** Absolute path to the component file. */
+  filePath: string;
+  /** Absolute path to the dir root the component was discovered under. */
+  dirRoot: string;
+  /** See {@link NormalizedComponentSource.prefix}. */
+  prefix?: string;
+  /** See {@link NormalizedComponentSource.pathPrefix}. */
+  pathPrefix: boolean;
+}
+/**
+ * Compute the component name unplugin-vue-components would assign for a
+ * given file under a given dir, mirroring the plugin's
+ * `directoryAsNamespace: true` + `collapseSamePrefixes: true` behavior
+ * and layering custom-prefix sources on top.
+ *
+ * Used both at render time (to register a custom resolver) and at lint
+ * time (so the linter can follow component graph correctly).
+ */
+declare function componentNameFromPath(opts: ComponentNameOptions): string;
+//#endregion
+export { ComponentNameOptions, NormalizedComponentSource, componentNameFromPath, normalizeComponentSources };
+//# sourceMappingURL=componentSources.d.ts.map

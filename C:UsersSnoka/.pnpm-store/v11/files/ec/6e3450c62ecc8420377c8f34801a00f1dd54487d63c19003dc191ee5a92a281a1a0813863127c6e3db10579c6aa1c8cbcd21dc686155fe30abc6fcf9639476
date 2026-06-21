@@ -1,0 +1,18 @@
+import { MaizzleConfig } from "../types/config.js";
+import { CreateRendererOptions, RenderedTemplate, Renderer, createRenderer } from "./createRenderer.js";
+import { Component } from "vue";
+
+//#region src/render/index.d.ts
+interface RenderResult {
+  html: string;
+  config: MaizzleConfig;
+  plaintext?: string;
+}
+/**
+ * Render a Vue SFC email template to a fully-transformed HTML string.
+ * Accepts a file path or a raw SFC source string.
+ */
+declare function render(template: string | Component, config?: Partial<MaizzleConfig>): Promise<RenderResult>;
+//#endregion
+export { type CreateRendererOptions, RenderResult, type RenderedTemplate, type Renderer, createRenderer, render };
+//# sourceMappingURL=index.d.ts.map

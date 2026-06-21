@@ -1,0 +1,66 @@
+import { resolveConfig } from "../../config/index.js";
+import { EventManager } from "../../events/index.js";
+import { normalizeComponentSources } from "../../utils/componentSources.js";
+import { createRenderer } from "../createRenderer.js";
+import { buildTemplate } from "../buildTemplate.js";
+import { createDefu } from "defu";
+//#region src/render/parallel/buildWorker.ts
+/**
+* Overlay config data with array-replace (not defu's default concat) so the
+* main thread's arrays — content globs, plugin/source lists — fully replace the
+* reloaded config's instead of duplicating every entry.
+*/
+const mergeConfig = createDefu((obj, key, value) => {
+	if (Array.isArray(value)) {
+		if (!(key in obj)) obj[key] = value;
+		return true;
+	}
+});
+/**
+* Build one batch of templates in a worker thread.
+*
+* Config function hooks (beforeRender/afterRender/afterTransform) can't cross
+* the thread boundary, so the worker reloads the config module to recover them,
+* then overlays the main thread's serialized config DATA on top — so
+* beforeCreate mutations and resolved values win while the reloaded config only
+* backfills the lost functions. beforeCreate/afterBuild are owned by the main
+* thread and never run here.
+*/
+async function run(data) {
+	const { templatePaths, configPath, configData, outputPath, outputExtension, contentBase } = data;
+	const config = mergeConfig(configData, await resolveConfig(configPath));
+	const events = new EventManager();
+	events.registerConfig(config);
+	const renderer = await createRenderer({
+		markdown: config.markdown,
+		root: config.root,
+		componentDirs: normalizeComponentSources(config.components?.source, process.cwd()),
+		vite: config.vite
+	});
+	const files = [];
+	let sfcAfterBuildCount = 0;
+	try {
+		for (const templatePath of templatePaths) {
+			const result = await buildTemplate(templatePath, {
+				config,
+				renderer,
+				events,
+				outputPath,
+				outputExtension,
+				contentBase
+			});
+			files.push(...result.files);
+			sfcAfterBuildCount += result.sfcAfterBuildCount;
+		}
+	} finally {
+		await renderer.close();
+	}
+	return {
+		files,
+		sfcAfterBuildCount
+	};
+}
+//#endregion
+export { run };
+
+//# sourceMappingURL=buildWorker.js.map

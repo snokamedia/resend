@@ -1,0 +1,101 @@
+import { walk } from "../utils/ast/walker.js";
+import "../utils/ast/index.js";
+import { compileTailwindCss } from "../utils/compileTailwindCss.js";
+import { resolve } from "pathe";
+//#region src/transformers/tailwindComponent.ts
+const DEFAULT_SEED = "@import \"@maizzle/tailwindcss\" source(none);";
+const OPEN_RE = /^mz-tw:(\S+)$/;
+const CLOSE_RE = /^\/mz-tw:(\S+)$/;
+/**
+* Compile Tailwind CSS for each top-level <Tailwind> block in the render
+* context. Nested <Tailwind> instances are flattened: their classes flow
+* up to the outermost block, their `#config` slot (if any) is ignored.
+* One <style> per outermost block is appended to <head>; marker comments
+* are stripped after.
+*/
+async function tailwindComponent(dom, blocks, config, filePath) {
+	if (!blocks.length) return dom;
+	const map = /* @__PURE__ */ new Map();
+	for (const b of blocks) map.set(b.id, {
+		id: b.id,
+		configCss: b.css,
+		nested: false,
+		classes: /* @__PURE__ */ new Set()
+	});
+	const stack = [];
+	const markers = [];
+	walk(dom, (node) => {
+		if (node.type === "comment") {
+			const data = node.data;
+			const open = data.match(OPEN_RE);
+			const close = data.match(CLOSE_RE);
+			if (open) {
+				const id = open[1];
+				const meta = map.get(id);
+				if (meta && stack.length > 0) meta.nested = true;
+				if (meta) stack.push(id);
+				markers.push(node);
+			} else if (close) {
+				const id = close[1];
+				if (stack[stack.length - 1] === id) stack.pop();
+				markers.push(node);
+			}
+			return;
+		}
+		const el = node;
+		/**
+		* Always assign to the OUTERMOST active marker (stack[0]) so nested
+		* <Tailwind> blocks merge their classes into the parent's scope.
+		*/
+		if (el.attribs?.class && stack.length > 0) map.get(stack[0]).classes.add(el.attribs.class);
+	});
+	const fromPath = filePath ?? resolve(process.cwd(), "template.vue");
+	let head;
+	walk(dom, (n) => {
+		if (!head && n.name === "head") head = n;
+	});
+	if (!head) throw new Error("`Tailwind` component requires `Head` component to be present in the template.");
+	/**
+	* Compile + inject one <style raw> per outermost block. `raw` opts
+	* the existing tailwindcss transformer out of recompiling
+	* already-compiled CSS.
+	*/
+	for (const meta of map.values()) {
+		if (meta.nested) continue;
+		const css = (await compileTailwindCss(buildCssInput(meta.configCss, meta.classes), config, `${fromPath}?tw=${meta.id}`)).trim();
+		if (!css) continue;
+		const styleNode = {
+			type: "tag",
+			name: "style",
+			attribs: { raw: "" },
+			children: [],
+			parent: head,
+			prev: null,
+			next: null
+		};
+		styleNode.children = [{
+			type: "text",
+			data: css,
+			parent: styleNode,
+			prev: null,
+			next: null
+		}];
+		head.children.push(styleNode);
+	}
+	for (const c of markers) {
+		const parent = c.parent;
+		if (!parent?.children) continue;
+		const i = parent.children.indexOf(c);
+		if (i >= 0) parent.children.splice(i, 1);
+	}
+	return dom;
+}
+function buildCssInput(configCss, classes) {
+	const seed = configCss ?? DEFAULT_SEED;
+	if (!classes.size) return seed;
+	return `${seed}\n@source inline("${[...classes].join(" ").replace(/"/g, "\\\"")}");`;
+}
+//#endregion
+export { tailwindComponent };
+
+//# sourceMappingURL=tailwindComponent.js.map

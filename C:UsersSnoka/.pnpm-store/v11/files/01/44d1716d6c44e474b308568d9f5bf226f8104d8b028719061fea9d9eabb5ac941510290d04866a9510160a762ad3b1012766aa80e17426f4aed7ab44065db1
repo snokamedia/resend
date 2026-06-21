@@ -1,0 +1,7 @@
+import { ChildNode } from "domhandler";
+
+//#region src/utils/ast/walker.d.ts
+declare function walk(ast: ChildNode[], callback: (node: ChildNode) => void): void;
+//#endregion
+export { walk };
+//# sourceMappingURL=walker.d.ts.map

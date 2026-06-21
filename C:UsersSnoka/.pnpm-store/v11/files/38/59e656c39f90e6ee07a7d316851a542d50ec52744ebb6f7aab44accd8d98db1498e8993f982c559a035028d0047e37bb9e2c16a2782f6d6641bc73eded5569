@@ -1,0 +1,36 @@
+import { UrlQueryOptions } from "../types/config.js";
+import { ChildNode } from "domhandler";
+
+//#region src/transformers/urlQuery.d.ts
+/**
+ * Append query parameters to URLs found in matching attributes/elements.
+ *
+ * @param html    HTML string to transform.
+ * @param params  Query parameters to append (e.g. `{ utm_source: 'newsletter' }`).
+ * @param options Behaviour overrides — `tags` (CSS selectors, default `['a']`),
+ *                `attributes` (default `['src', 'href', 'poster', 'srcset', 'background']`),
+ *                `strict` (default `true`, only rewrites absolute URLs),
+ *                `qs` (forwarded to `query-string`, default `{ encode: false }`).
+ * @returns       The transformed HTML string.
+ *
+ * @example
+ * import { urlQuery } from '@maizzle/framework'
+ *
+ * const out = urlQuery(
+ *   '<a href="https://example.com">x</a>',
+ *   { utm_source: 'newsletter' },
+ * )
+ *
+ * // Restrict to specific tags / attributes:
+ * urlQuery(html, { ref: 'email' }, { tags: ['a', 'img'], attributes: ['href', 'src'] })
+ */
+declare function urlQuery(html: string, params?: Record<string, unknown>, options?: UrlQueryOptions): string;
+/**
+ * DOM-form of {@link urlQuery} used by the internal transformer pipeline.
+ * Takes a parsed DOM, returns a parsed DOM — avoids redundant
+ * serialize/parse round-trips when chained with other transformers.
+ */
+declare function urlQueryDom(dom: ChildNode[], params?: Record<string, unknown>, options?: UrlQueryOptions): ChildNode[];
+//#endregion
+export { urlQuery, urlQueryDom };
+//# sourceMappingURL=urlQuery.d.ts.map

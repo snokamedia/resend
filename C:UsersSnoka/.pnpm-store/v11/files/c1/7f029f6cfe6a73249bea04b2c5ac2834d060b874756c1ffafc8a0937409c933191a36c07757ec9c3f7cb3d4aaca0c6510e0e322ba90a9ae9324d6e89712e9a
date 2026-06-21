@@ -1,0 +1,42 @@
+import { AttributesConfig } from "../types/config.js";
+import { ChildNode } from "domhandler";
+
+//#region src/transformers/addAttributes.d.ts
+/**
+ * Add attributes transformer.
+ *
+ * Automatically adds attributes to HTML elements based on CSS selectors.
+ *
+ * Default attributes (can be disabled by setting `attributes.add` to false):
+ * - table: cellpadding="0", cellspacing="0", role="none"
+ * - img: alt=""
+ *
+ * Supports tag, class, id, and attribute selectors.
+ * Multiple selectors can be specified by comma-separating them.
+ *
+ * @param html   HTML string to transform.
+ * @param config Attributes config (see {@link AttributesConfig}).
+ * @returns      The transformed HTML string.
+ *
+ * @example
+ * import { addAttributes } from '@maizzle/framework'
+ *
+ * const out = addAttributes('<div></div>', {
+ *   add: {
+ *     div: { role: 'article' },
+ *     '.test': { editable: true },
+ *     '#header': { 'data-id': 'main' },
+ *     'div, p': { class: 'content' },
+ *   },
+ * })
+ */
+declare function addAttributes(html: string, config?: AttributesConfig): string;
+/**
+ * DOM-form of {@link addAttributes} used by the internal transformer pipeline.
+ * Takes a parsed DOM, returns a parsed DOM — avoids redundant
+ * serialize/parse round-trips when chained with other transformers.
+ */
+declare function addAttributesDom(dom: ChildNode[], config?: AttributesConfig): ChildNode[];
+//#endregion
+export { addAttributes, addAttributesDom };
+//# sourceMappingURL=addAttributes.d.ts.map

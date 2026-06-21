@@ -1,0 +1,14 @@
+import { Plugin } from "vite";
+
+//#region src/render/plugins/codeBlockExtract.d.ts
+/**
+ * Vite plugin that extracts raw slot content from <CodeBlock> tags
+ * and passes it as a :code prop before Vue compiles the template.
+ *
+ * This lets users write HTML naturally inside CodeBlock slots without
+ * Vue attempting to compile it as template syntax.
+ */
+declare function codeBlockExtract(): Plugin;
+//#endregion
+export { codeBlockExtract };
+//# sourceMappingURL=codeBlockExtract.d.ts.map

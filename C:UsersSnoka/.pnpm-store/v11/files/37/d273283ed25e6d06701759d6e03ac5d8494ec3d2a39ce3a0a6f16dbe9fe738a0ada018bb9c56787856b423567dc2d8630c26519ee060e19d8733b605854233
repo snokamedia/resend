@@ -1,0 +1,59 @@
+import { MaizzleConfig } from "../types/config.js";
+import { NormalizedComponentSource } from "../utils/componentSources.js";
+
+//#region src/server/compatibility.d.ts
+interface Feature {
+  slug: string;
+  title: string;
+  url: string;
+  category: string;
+  stats: any;
+}
+interface Indexes {
+  nicenames: {
+    supported: string;
+    mitigated: string;
+    unsupported: string;
+    unknown: string;
+    mixed: string;
+  };
+  familyNicenames: Record<string, string>;
+  cssProp: Map<string, Feature[]>;
+  cssPropValue: Map<string, Array<{
+    value: string;
+    feature: Feature;
+  }>>;
+  cssAtRule: Map<string, Feature[]>;
+  cssMediaFeature: Map<string, Feature[]>;
+  cssPseudoClass: Map<string, Feature[]>;
+  cssPseudoElement: Map<string, Feature[]>;
+  cssFunction: Map<string, Feature[]>;
+  cssUnit: Map<string, Feature[]>;
+  cssImportant?: Feature;
+  cssVariables?: Feature;
+  cssNesting?: Feature;
+  cssComments?: Feature;
+  cssModernColor?: Feature;
+  htmlTag: Map<string, Feature[]>;
+  htmlAttr: Map<string, Feature[]>;
+  htmlInputType: Map<string, Feature[]>;
+  htmlButtonType: Map<string, Feature[]>;
+  htmlDoctype?: Feature;
+  htmlComments?: Feature;
+  htmlAnchorLinks?: Feature;
+  htmlMailtoLinks?: Feature;
+  htmlMetaColorScheme?: Feature;
+  htmlSemantics?: Feature;
+  htmlStyleInBody?: Feature;
+  imageExt: Map<string, Feature[]>;
+  /** All features by slug — unfiltered, used for URL lookups (e.g. by lint). */
+  bySlug: Map<string, {
+    title: string;
+    url: string;
+  }>;
+}
+declare function initCompatibility(): Promise<Indexes | null>;
+declare function serveCompatibility(url: string, res: any, config: MaizzleConfig, componentDirs: NormalizedComponentSource[]): Promise<void>;
+//#endregion
+export { initCompatibility, serveCompatibility };
+//# sourceMappingURL=compatibility.d.ts.map

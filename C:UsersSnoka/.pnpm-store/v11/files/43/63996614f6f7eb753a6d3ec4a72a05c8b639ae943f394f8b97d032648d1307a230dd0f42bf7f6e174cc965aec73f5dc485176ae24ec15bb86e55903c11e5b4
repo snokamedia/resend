@@ -1,0 +1,43 @@
+import { FilterFunction } from "./defaults.js";
+import { ChildNode } from "domhandler";
+
+//#region src/transformers/filters/index.d.ts
+type FiltersConfig = false | Record<string, (str: string, value: string) => string>;
+/**
+ * Apply transformation functions to the content of elements that have
+ * matching filter attributes. Multiple filters on the same element are
+ * executed in the order the attributes are defined.
+ *
+ * Default filters include string manipulation (`uppercase`, `lowercase`,
+ * `trim`, etc.), math operations (`plus`, `minus`, `multiply`, etc.),
+ * and more.
+ *
+ * @param html    HTML string to transform.
+ * @param custom  Custom filters to merge with the defaults. Pass `false`
+ *                to disable all filters (including the defaults).
+ * @returns       The transformed HTML string.
+ *
+ * @example
+ * import { filters } from '@maizzle/framework'
+ *
+ * // Defaults only
+ * const out = filters('<p uppercase>foo</p>') // → '<p>FOO</p>'
+ *
+ * // Add a custom filter
+ * filters('<p suffix=" world">hello</p>', {
+ *   suffix: (s, v) => s + v,
+ * })
+ *
+ * // Disable all filters
+ * filters('<p uppercase>foo</p>', false)
+ */
+declare function filters(html: string, custom?: FiltersConfig): string;
+/**
+ * DOM-form of {@link filters} used by the internal transformer pipeline.
+ * Takes a parsed DOM, returns a parsed DOM — avoids redundant
+ * serialize/parse round-trips when chained with other transformers.
+ */
+declare function filtersDom(dom: ChildNode[], custom?: FiltersConfig): ChildNode[];
+//#endregion
+export { type FilterFunction, FiltersConfig, filters, filtersDom };
+//# sourceMappingURL=index.d.ts.map

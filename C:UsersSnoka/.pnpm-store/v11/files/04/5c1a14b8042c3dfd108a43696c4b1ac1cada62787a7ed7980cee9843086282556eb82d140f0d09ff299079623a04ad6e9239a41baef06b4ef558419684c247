@@ -1,0 +1,19 @@
+import { matchesGlob, relative } from "pathe";
+//#region src/utils/watchPaths.ts
+/**
+* Build a predicate that tells whether an absolute file path emitted by
+* chokidar matches any of the given globs. Patterns are interpreted as
+* project-relative; a leading `./` is stripped so user-supplied globs like
+* `./locales/**` behave identically to `locales/**`.
+*/
+function createWatchedFileMatcher(patterns, cwd) {
+	const normalized = patterns.map((p) => p.replace(/^\.\//, ""));
+	return (file) => {
+		const rel = relative(cwd, file);
+		return normalized.some((p) => matchesGlob(rel, p));
+	};
+}
+//#endregion
+export { createWatchedFileMatcher };
+
+//# sourceMappingURL=watchPaths.js.map

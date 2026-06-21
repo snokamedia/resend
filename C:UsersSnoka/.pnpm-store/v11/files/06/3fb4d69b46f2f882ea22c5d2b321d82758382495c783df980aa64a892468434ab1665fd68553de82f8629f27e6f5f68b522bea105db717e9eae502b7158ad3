@@ -1,0 +1,16 @@
+import { MaizzleConfig } from "../types/config.js";
+import { InjectionKey } from "vue";
+
+//#region src/composables/useConfig.d.ts
+/**
+ * Use the global symbol registry so the key is identical across every
+ * module instance. In dev, `render()` (Node) and the SFC's auto-imported
+ * composables can resolve to two separate instances of this module; a plain
+ * `Symbol()` would differ between them, so `app.provide()` and the SFC's
+ * `inject()` would miss each other and `useConfig()` would throw.
+ */
+declare const MaizzleConfigKey: InjectionKey<MaizzleConfig>;
+declare function useConfig(): MaizzleConfig;
+//#endregion
+export { MaizzleConfigKey, useConfig };
+//# sourceMappingURL=useConfig.d.ts.map

@@ -1,0 +1,18 @@
+import { MaizzleConfig } from "../../types/config.js";
+import postcss from "postcss";
+
+//#region src/plugins/postcss/mergeMediaQueries.d.ts
+/**
+ * Sorts and merges CSS media queries using postcss-sort-media-queries.
+ *
+ * Enabled by default. Opt out with css: { media: false }.
+ *
+ * Config examples:
+ *   css: { media: true }                       // merge, mobile-first sort (default)
+ *   css: { media: { sort: 'desktop-first' } }  // merge, desktop-first sort
+ *   css: { media: false }                       // disabled
+ */
+declare function mergeMediaQueries(config: MaizzleConfig): postcss.Plugin | null;
+//#endregion
+export { mergeMediaQueries };
+//# sourceMappingURL=mergeMediaQueries.d.ts.map

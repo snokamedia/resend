@@ -1,0 +1,45 @@
+//#region src/plugins/postcss/removeDeclarations.ts
+const IMPORTANT = "!important";
+function normalizeSelector(selector) {
+	return selector.replace(/(\r\n|\n|\r)/gm, "");
+}
+var removeDeclarations_default = (options) => {
+	return {
+		postcssPlugin: "postcss-remove-declarations",
+		Once(root) {
+			const remove = options.remove ?? {};
+			root.walkRules((rule) => {
+				let toRemove = remove[normalizeSelector(rule.selector)];
+				if (!toRemove) return;
+				if (toRemove === "*") {
+					rule.remove();
+					return;
+				}
+				if (typeof toRemove === "string") toRemove = [toRemove];
+				if (Array.isArray(toRemove)) {
+					const props = toRemove;
+					rule.walkDecls((decl) => {
+						if (props.includes(decl.prop)) decl.remove();
+					});
+				} else if (typeof toRemove === "object") {
+					const map = toRemove;
+					rule.walkDecls((decl) => {
+						if (!(decl.prop in map)) return;
+						let expected = map[decl.prop];
+						const requireNonImportant = expected.endsWith(IMPORTANT);
+						if (requireNonImportant) expected = expected.slice(0, -10).trim();
+						if (decl.value !== expected) return;
+						if (decl.important && requireNonImportant) return;
+						decl.remove();
+					});
+				}
+				if (rule.nodes?.length === 0) rule.remove();
+			});
+		}
+	};
+};
+const postcss = true;
+//#endregion
+export { removeDeclarations_default as default, postcss };
+
+//# sourceMappingURL=removeDeclarations.js.map

@@ -1,0 +1,14 @@
+import defu from "defu";
+import { stripHtml } from "string-strip-html";
+//#region src/plaintext.ts
+const defaults = { dumpLinkHrefsNearby: {
+	enabled: true,
+	putOnNewLine: true
+} };
+function createPlaintext(html, options) {
+	return stripHtml(html, defu(options, defaults)).result;
+}
+//#endregion
+export { createPlaintext };
+
+//# sourceMappingURL=plaintext.js.map

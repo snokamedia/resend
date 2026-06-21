@@ -1,0 +1,128 @@
+//#region src/events/index.ts
+/**
+* Central event manager that collects handlers from config and useEvent() calls.
+*
+* Handlers are run in order: config handler first, then SFC handlers in registration order.
+* For events that return a value (beforeRender, afterRender, afterTransform),
+* the returned value replaces the corresponding input for the next handler.
+*/
+var EventManager = class {
+	handlers = /* @__PURE__ */ new Map();
+	/**
+	* Snapshot of config-handler counts per event, captured at registerConfig().
+	* clearSfcHandlers() truncates each list back to this count, dropping
+	* any SFC-registered handlers that were appended after.
+	*/
+	configHandlerCount = /* @__PURE__ */ new Map();
+	/**
+	* Register handlers from the Maizzle config.
+	*/
+	registerConfig(config) {
+		for (const name of [
+			"beforeCreate",
+			"beforeRender",
+			"afterRender",
+			"afterTransform",
+			"afterBuild"
+		]) {
+			const handler = config[name];
+			if (typeof handler === "function") this.on(name, handler);
+			this.configHandlerCount.set(name, this.handlers.get(name)?.length ?? 0);
+		}
+	}
+	/**
+	* Register a handler for an event (used by useEvent composable).
+	*/
+	on(name, handler) {
+		if (!this.handlers.has(name)) this.handlers.set(name, []);
+		this.handlers.get(name).push(handler);
+	}
+	/**
+	* Fire beforeCreate — runs all handlers, config is mutated in place.
+	*/
+	async fireBeforeCreate(params) {
+		const handlers = this.handlers.get("beforeCreate") ?? [];
+		for (const handler of handlers) await handler(params);
+	}
+	/**
+	* Fire beforeRender — if a handler returns a string, it replaces
+	* `template.source` for subsequent handlers and the renderer.
+	*/
+	async fireBeforeRender(params) {
+		const handlers = this.handlers.get("beforeRender") ?? [];
+		for (const handler of handlers) {
+			const result = await handler(params);
+			if (typeof result === "string") params.template.source = result;
+		}
+		return params.template.source;
+	}
+	/**
+	* Fire afterRender — if a handler returns a string, it replaces `html`.
+	*/
+	async fireAfterRender(params) {
+		const handlers = this.handlers.get("afterRender") ?? [];
+		let { html } = params;
+		for (const handler of handlers) {
+			const result = await handler({
+				config: params.config,
+				template: params.template,
+				html
+			});
+			if (typeof result === "string") html = result;
+		}
+		return html;
+	}
+	/**
+	* Fire afterTransform — if a handler returns a string, it replaces `html`.
+	*/
+	async fireAfterTransform(params) {
+		const handlers = this.handlers.get("afterTransform") ?? [];
+		let { html } = params;
+		for (const handler of handlers) {
+			const result = await handler({
+				config: params.config,
+				template: params.template,
+				html
+			});
+			if (typeof result === "string") html = result;
+		}
+		return html;
+	}
+	/**
+	* Fire afterBuild — runs all handlers with the file list.
+	*/
+	async fireAfterBuild(params) {
+		const handlers = this.handlers.get("afterBuild") ?? [];
+		for (const handler of handlers) await handler(params);
+	}
+	/**
+	* Drop SFC-registered handlers, keep config-registered ones.
+	*
+	* Per default, only clears events whose scope is per-template
+	* (`beforeRender`, `afterRender`, `afterTransform`). Build-scoped events
+	* (`afterBuild`) accumulate across all templates and fire once at end of
+	* build. Pass an explicit list to override.
+	*/
+	clearSfcHandlers(events = [
+		"beforeRender",
+		"afterRender",
+		"afterTransform"
+	]) {
+		for (const name of events) {
+			const handlers = this.handlers.get(name);
+			if (!handlers) continue;
+			const keep = this.configHandlerCount.get(name) ?? 0;
+			if (handlers.length > keep) this.handlers.set(name, handlers.slice(0, keep));
+		}
+	}
+	/**
+	* Clear all handlers entirely.
+	*/
+	clear() {
+		this.handlers.clear();
+	}
+};
+//#endregion
+export { EventManager };
+
+//# sourceMappingURL=index.js.map

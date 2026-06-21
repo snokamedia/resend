@@ -1,0 +1,42 @@
+import { Root } from "postcss";
+
+//#region src/utils/cssBox.d.ts
+declare const NO_BORDER_STYLES: Set<string>;
+/**
+ * Parse a length token into px. Handles `Npx`, `Nrem`, `Nem`, `Npt`, and
+ * unitless N (treated as px). Returns null for percentages, calc(),
+ * keywords, or anything that doesn't reduce to a concrete length.
+ */
+declare function lengthToPx(value: string): number | null;
+/**
+ * Expand a 1-4 token CSS shorthand (T R B L) into a left/right pair:
+ *   1: all sides
+ *   2: TB RL
+ *   3: T RL B
+ *   4: T R B L
+ */
+declare function shorthandSides(value: string): {
+  left?: string;
+  right?: string;
+};
+/**
+ * Read horizontal padding (left + right) px from a parsed style root.
+ * Percentages are skipped since they'd need a known container width.
+ */
+declare function horizontalPaddingPx(root: Root): number;
+/**
+ * Extract a px length from a CSS border shorthand (e.g. `1px solid red` → 1).
+ * Returns null when the value indicates no border (`none` or `hidden`).
+ * Defaults to 3px (CSS `medium`) when a visible style is set but no
+ * explicit width token is present in the shorthand value.
+ */
+declare function shorthandBorderWidthPx(value: string): number | null;
+/**
+ * Read horizontal border widths (left + right) px from a parsed style root.
+ * Per-side `border-style: none|hidden` overrides count as zero
+ * contribution. Returns total px or 0 when nothing resolves.
+ */
+declare function horizontalBorderPx(root: Root): number;
+//#endregion
+export { NO_BORDER_STYLES, horizontalBorderPx, horizontalPaddingPx, lengthToPx, shorthandBorderWidthPx, shorthandSides };
+//# sourceMappingURL=cssBox.d.ts.map

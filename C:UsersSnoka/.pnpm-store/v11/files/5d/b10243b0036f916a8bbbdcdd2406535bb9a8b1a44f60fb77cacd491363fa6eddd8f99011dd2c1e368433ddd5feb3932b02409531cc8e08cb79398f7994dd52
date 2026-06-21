@@ -1,0 +1,4 @@
+//#region src/commands/make/config.d.ts
+declare function makeConfig(name?: string): Promise<void>;
+//#endregion
+export { makeConfig as default };

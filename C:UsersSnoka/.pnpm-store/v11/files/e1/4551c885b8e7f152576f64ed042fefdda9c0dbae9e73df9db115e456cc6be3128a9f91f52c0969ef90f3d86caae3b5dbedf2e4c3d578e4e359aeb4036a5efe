@@ -1,0 +1,16 @@
+import { MaizzleConfig } from "../types/config.js";
+
+//#region src/transformers/replaceStrings.d.ts
+/**
+ * Replace strings transformer.
+ *
+ * Replaces strings in the HTML using the key-value pairs defined in
+ * `config.replaceStrings`. Each key is treated as a regular expression
+ * pattern (case-insensitive, global), and the value is the replacement.
+ *
+ * Character classes must be escaped in keys, e.g. `\\s` for `\s`.
+ */
+declare function replaceStrings(html: string, config?: MaizzleConfig): string;
+//#endregion
+export { replaceStrings };
+//# sourceMappingURL=replaceStrings.d.ts.map

@@ -1,0 +1,141 @@
+import { runTransformers } from "../transformers/index.js";
+import { createPlaintext } from "../plaintext.js";
+import { stripForHtml, stripForPlaintext } from "../utils/output-markers.js";
+import { _setCurrentTemplate } from "../composables/useCurrentTemplate.js";
+import { cloneConfig } from "../utils/cloneConfig.js";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, parse, relative, resolve, sep } from "node:path";
+import defu from "defu";
+//#region src/render/buildTemplate.ts
+/**
+* Render a single template through the full pipeline and write its output.
+*
+* Shared by the sequential build loop and the parallel build worker so both
+* paths produce byte-identical output. `events` is the manager the per-template
+* events fire on (config handlers registered via `registerConfig`, SFC handlers
+* registered here from the render). The caller owns build-scoped events
+* (`beforeCreate`/`afterBuild`).
+*/
+async function buildTemplate(templatePath, ctx) {
+	const { config, renderer, events, outputPath, outputExtension, contentBase } = ctx;
+	const absolutePath = resolve(templatePath);
+	const parsedPath = parse(absolutePath);
+	const template = {
+		source: readFileSync(absolutePath, "utf-8"),
+		path: parsedPath
+	};
+	const files = [];
+	let sfcAfterBuildCount = 0;
+	_setCurrentTemplate(parsedPath);
+	try {
+		/**
+		* Clone config per template so beforeRender mutations (setting a
+		* preheader, injecting fetched data, etc.) stay scoped to this template
+		* instead of leaking into later ones through the shared config object.
+		*/
+		const renderConfig = cloneConfig(config);
+		const originalSource = template.source;
+		await events.fireBeforeRender({
+			config: renderConfig,
+			template
+		});
+		const rendered = await renderer.render(absolutePath, renderConfig, template.source !== originalSource ? { source: template.source } : void 0);
+		/**
+		* Register SFC event handlers collected during render so they take part in
+		* the post-render events. Cleared at the end of this call so they don't
+		* leak into the next template (afterBuild is the exception — it's never
+		* cleared by clearSfcHandlers; see the count above).
+		*/
+		for (const { name, handler } of rendered.sfcEventHandlers) {
+			if (name === "afterBuild") sfcAfterBuildCount++;
+			events.on(name, handler);
+		}
+		const templateConfig = rendered.templateConfig;
+		let html = await events.fireAfterRender({
+			config: templateConfig,
+			template,
+			html: rendered.html
+		});
+		const doctype = rendered.doctype ?? templateConfig.doctype ?? "<!DOCTYPE html>";
+		if (templateConfig.useTransformers !== false) html = await runTransformers(html, templateConfig, absolutePath, doctype, rendered.tailwindBlocks);
+		html = await events.fireAfterTransform({
+			config: templateConfig,
+			template,
+			html
+		});
+		if (doctype) html = `${doctype}\n${html}`;
+		const htmlOut = stripForHtml(html);
+		const sfcOutputPath = rendered.outputPath;
+		let outputFilePath;
+		if (sfcOutputPath) {
+			const parsed = parse(resolve(sfcOutputPath));
+			const ext = parsed.ext ? parsed.ext.slice(1) : outputExtension;
+			outputFilePath = join(parsed.dir, `${parsed.name}.${ext}`);
+		} else outputFilePath = resolveOutputPath(templatePath, outputPath, outputExtension, contentBase);
+		mkdirSync(dirname(outputFilePath), { recursive: true });
+		writeFileSync(outputFilePath, htmlOut);
+		files.push(outputFilePath);
+		const globalPlaintext = templateConfig.plaintext;
+		const sfcPlaintext = rendered.plaintext;
+		if (globalPlaintext || sfcPlaintext) {
+			const globalCfg = typeof globalPlaintext === "object" ? globalPlaintext : {};
+			const stripOptions = defu(sfcPlaintext?.options, globalCfg.options);
+			const plaintext = createPlaintext(stripForPlaintext(html), stripOptions);
+			const ptExtension = sfcPlaintext?.extension ?? globalCfg.extension ?? "txt";
+			let ptOutputPath;
+			if (sfcPlaintext?.destination) ptOutputPath = resolveOutputPath(templatePath, resolve(sfcPlaintext.destination), ptExtension, contentBase);
+			else if (sfcOutputPath) {
+				const parsed = parse(outputFilePath);
+				ptOutputPath = join(parsed.dir, `${parsed.name}.${ptExtension}`);
+			} else if (globalCfg.destination) ptOutputPath = resolveOutputPath(templatePath, resolve(globalCfg.destination), ptExtension, contentBase);
+			else ptOutputPath = resolveOutputPath(templatePath, outputPath, ptExtension, contentBase);
+			mkdirSync(dirname(ptOutputPath), { recursive: true });
+			writeFileSync(ptOutputPath, plaintext);
+			files.push(ptOutputPath);
+		}
+	} finally {
+		_setCurrentTemplate(void 0);
+		events.clearSfcHandlers();
+	}
+	return {
+		files,
+		sfcAfterBuildCount
+	};
+}
+/**
+* Extract the static (non-glob) prefix from content patterns.
+*
+* For example, `['/abs/path/emails/**\/*.vue']` → `'/abs/path/emails'`
+*
+* Used to strip the content base from template paths so the output preserves
+* only the subdirectory structure.
+*
+* With multiple positive patterns (multi-root setups), returns their common
+* ancestor directory so templates from every root keep a clean relative path.
+*/
+function computeContentBase(patterns) {
+	const positives = patterns.filter((p) => !p.startsWith("!"));
+	return (positives.length > 0 ? positives : patterns).map((pattern) => {
+		const staticPart = pattern.split(/[*{?[]/)[0];
+		return resolve(staticPart.endsWith("/") ? staticPart : dirname(staticPart));
+	}).reduce(commonPath);
+}
+/** Longest common directory path shared by two absolute paths. */
+function commonPath(a, b) {
+	const aSegments = a.split(sep);
+	const bSegments = b.split(sep);
+	const shared = [];
+	for (let i = 0; i < Math.min(aSegments.length, bSegments.length); i++) {
+		if (aSegments[i] !== bSegments[i]) break;
+		shared.push(aSegments[i]);
+	}
+	return shared.join(sep) || sep;
+}
+function resolveOutputPath(templatePath, outputDir, extension, contentBase) {
+	const name = basename(templatePath).replace(/\.(vue|md)$/, "");
+	return join(outputDir, relative(contentBase, dirname(resolve(templatePath))), `${name}.${extension}`);
+}
+//#endregion
+export { buildTemplate, computeContentBase, resolveOutputPath };
+
+//# sourceMappingURL=buildTemplate.js.map

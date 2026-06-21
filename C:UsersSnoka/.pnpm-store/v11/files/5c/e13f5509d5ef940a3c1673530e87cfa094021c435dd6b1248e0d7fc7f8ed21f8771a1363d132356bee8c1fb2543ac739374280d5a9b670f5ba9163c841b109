@@ -1,0 +1,85 @@
+import { ChildNode } from "domhandler";
+import juice from "juice";
+
+//#region src/transformers/inlineCss.d.ts
+type JuiceOptions = NonNullable<Parameters<typeof juice>[1]>;
+/**
+ * Options for the `inlineCss` transformer. Accepts every Juice option plus a
+ * handful of Maizzle-specific extras.
+ */
+interface InlineCssOptions extends JuiceOptions {
+  /**
+   * Convert `0px`, `0em` etc. to `0` in inline styles.
+   *
+   * @default true
+   */
+  preferUnitlessValues?: boolean;
+  /**
+   * CSS selectors to preserve in `<style>` tags, even after inlining.
+   * Mapped to Juice's `preservedSelectors` option.
+   *
+   * @default []
+   */
+  safelist?: string[];
+  /**
+   * Additional CSS string to inline alongside `<style>` tag contents.
+   * Mapped to Juice's `extraCss` option.
+   */
+  customCSS?: string;
+  /**
+   * Duplicate CSS properties to HTML attributes.
+   * Mapped to Juice's static `styleToAttribute` property.
+   */
+  styleToAttribute?: Record<string, string>;
+  /**
+   * CSS properties to exclude from inlining.
+   * Mapped to Juice's static `excludedProperties` property.
+   */
+  excludedProperties?: string[];
+  /**
+   * Elements that can receive `width` HTML attributes.
+   * Mapped to Juice's static `widthElements` property.
+   *
+   * @default ['img', 'video']
+   */
+  widthElements?: string[];
+  /**
+   * Elements that can receive `height` HTML attributes.
+   * Mapped to Juice's static `heightElements` property.
+   *
+   * @default ['img', 'video']
+   */
+  heightElements?: string[];
+  /**
+   * Template language code blocks to preserve during inlining.
+   * Mapped to Juice's static `codeBlocks` property.
+   */
+  codeBlocks?: Record<string, {
+    start: string;
+    end: string;
+  }>;
+}
+/**
+ * Inline CSS from `<style>` tags into `style` attributes on matching elements.
+ *
+ * @param html    HTML string to transform.
+ * @param options Juice options plus Maizzle-specific extras.
+ * @returns       The transformed HTML string.
+ *
+ * @example
+ * import { inlineCss } from '@maizzle/framework'
+ *
+ * const out = inlineCss('<style>.red{color:red}</style><p class="red">x</p>', {
+ *   removeStyleTags: true,
+ * })
+ */
+declare function inlineCss(html: string, options?: InlineCssOptions): string;
+/**
+ * DOM-form of {@link inlineCss} used by the internal transformer pipeline.
+ * Takes a parsed DOM, returns a parsed DOM — avoids the redundant
+ * serialize/parse round-trips when chained with other transformers.
+ */
+declare function inlineCssDom(dom: ChildNode[], options?: InlineCssOptions): ChildNode[];
+//#endregion
+export { InlineCssOptions, inlineCss, inlineCssDom };
+//# sourceMappingURL=inlineCss.d.ts.map

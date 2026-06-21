@@ -1,0 +1,8 @@
+import { Plugin } from "postcss";
+
+//#region src/plugins/postcss/pruneVars.d.ts
+declare const _default: () => Plugin;
+declare const postcss = true;
+//#endregion
+export { _default as default, postcss };
+//# sourceMappingURL=pruneVars.d.ts.map

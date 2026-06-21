@@ -1,0 +1,31 @@
+import { ChildNode } from "domhandler";
+
+//#region src/transformers/columnWidth.d.ts
+/**
+ * Resolve `__MAIZZLE_COLW_{id}__` and `__MAIZZLE_OH_{id}__` placeholders.
+ *
+ * COLW (column width) — emitted by `<Column>` and `<Overlap>`. Walks up to
+ * the nearest ancestor marked `data-maizzle-cw` (Container, Section,
+ * Row, or another Column already resolved) and divides the source
+ * width by `data-maizzle-cw-count`. With `data-maizzle-cw-self`,
+ * reads from the element's own inlined max/width/min-width
+ * instead — used by `<Overlap>` with its own width class.
+ *
+ * OH (overlap height) — emitted by `<Overlap>`. Reads max-height, height,
+ * or min-height from the element's own inlined style.
+ *
+ * Resolution rules:
+ * - Style placeholders for `min-width`: replaced when resolvable, otherwise
+ *   the entire `min-width` declaration is stripped.
+ * - Other style placeholders (Overlap td `width`, etc.): replaced when
+ *   resolvable, otherwise replaced with the count-based fallback or `100%`.
+ * - Comment placeholders: same fallback chain.
+ *
+ * Resolved column widths are written back to `data-maizzle-cw` so nested
+ * rows cascade. All `data-maizzle-cw*` and `data-maizzle-oh-*` are
+ * stripped at the end of the second walk pass.
+ */
+declare function columnWidth(dom: ChildNode[]): ChildNode[];
+//#endregion
+export { columnWidth };
+//# sourceMappingURL=columnWidth.d.ts.map

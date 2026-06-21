@@ -1,0 +1,19 @@
+import { UrlConfig } from "../types/config.js";
+//#region src/composables/useBaseUrl.d.ts
+/**
+ * Set the base URL for the current email template — same as
+ * `config.url.base`, scoped to one SFC.
+ *
+ * Pass a string to prepend to all default tags/attributes, or an object
+ * for fine-grained control (which tags/attributes, style tags, etc.).
+ *
+ * Usage in SFC <script setup>:
+ * ```ts
+ * useBaseUrl('https://cdn.example.com/emails/')
+ * useBaseUrl({ url: 'https://cdn.example.com/', styleTag: true })
+ * ```
+ */
+declare function useBaseUrl(value: UrlConfig['base']): void;
+//#endregion
+export { useBaseUrl };
+//# sourceMappingURL=useBaseUrl.d.ts.map

@@ -1,0 +1,16 @@
+import { MaizzleConfig } from "../types/config.js";
+import postcss from "postcss";
+
+//#region src/utils/compileTailwindCss.d.ts
+declare function createTailwindProcessor(config: MaizzleConfig): postcss.Processor;
+declare function lowerCssSyntax(css: string): string;
+declare function optimizeTailwindCss(css: string, config: MaizzleConfig): Promise<string>;
+/**
+ * Compile a Tailwind CSS source string into final email-safe CSS:
+ * runs @tailwindcss/postcss, lowers modern syntax via lightningcss,
+ * then applies cleanup + media-query merging.
+ */
+declare function compileTailwindCss(cssInput: string, config: MaizzleConfig, from: string): Promise<string>;
+//#endregion
+export { compileTailwindCss, createTailwindProcessor, lowerCssSyntax, optimizeTailwindCss };
+//# sourceMappingURL=compileTailwindCss.d.ts.map

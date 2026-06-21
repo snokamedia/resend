@@ -1,0 +1,198 @@
+import { componentNameFromPath } from "../utils/componentSources.js";
+import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { glob } from "tinyglobby";
+//#region src/server/sfc-utils.ts
+const __dirname = dirname(fileURLToPath(import.meta.url));
+/**
+* Built-in framework components Maizzle ships internally. Issues raised
+* against these files are framework-owned, not the user's responsibility,
+* so the dev UI's Checks tab filters them out.
+*/
+const FRAMEWORK_COMPONENTS_DIR = resolve(__dirname, "../components").replace(/\\/g, "/") + "/";
+function isFrameworkComponent(file) {
+	return file.replace(/\\/g, "/").startsWith(FRAMEWORK_COMPONENTS_DIR);
+}
+function parseSfcBlocks(source) {
+	let template = null;
+	const styles = [];
+	const templateMatch = source.match(/<template\b[^>]*>([\s\S]*)<\/template>/);
+	if (templateMatch) {
+		const contentStart = source.indexOf(templateMatch[0]) + templateMatch[0].indexOf(templateMatch[1]);
+		const offset = source.slice(0, contentStart).split("\n").length - 1;
+		template = {
+			content: templateMatch[1],
+			offset
+		};
+	}
+	const styleRe = /<style\b([^>]*)>([\s\S]*?)<\/style>/g;
+	let m;
+	while ((m = styleRe.exec(source)) !== null) {
+		if (/\blang\s*=\s*["'](?!css)/i.test(m[1])) continue;
+		const contentStart = m.index + m[0].indexOf(m[2]);
+		const offset = source.slice(0, contentStart).split("\n").length - 1;
+		styles.push({
+			content: m[2],
+			offset
+		});
+	}
+	return {
+		template,
+		styles
+	};
+}
+/**
+* Standard HTML elements — anything not in this set is treated as a component.
+*/
+const HTML_ELEMENTS = new Set([
+	"a",
+	"abbr",
+	"address",
+	"area",
+	"article",
+	"aside",
+	"audio",
+	"b",
+	"base",
+	"bdi",
+	"bdo",
+	"blockquote",
+	"body",
+	"br",
+	"button",
+	"canvas",
+	"caption",
+	"cite",
+	"code",
+	"col",
+	"colgroup",
+	"data",
+	"datalist",
+	"dd",
+	"del",
+	"details",
+	"dfn",
+	"dialog",
+	"div",
+	"dl",
+	"dt",
+	"em",
+	"embed",
+	"fieldset",
+	"figcaption",
+	"figure",
+	"footer",
+	"form",
+	"h1",
+	"h2",
+	"h3",
+	"h4",
+	"h5",
+	"h6",
+	"head",
+	"header",
+	"hgroup",
+	"hr",
+	"html",
+	"i",
+	"iframe",
+	"img",
+	"input",
+	"ins",
+	"kbd",
+	"label",
+	"legend",
+	"li",
+	"link",
+	"main",
+	"map",
+	"mark",
+	"menu",
+	"meta",
+	"meter",
+	"nav",
+	"noscript",
+	"object",
+	"ol",
+	"optgroup",
+	"option",
+	"output",
+	"p",
+	"picture",
+	"pre",
+	"progress",
+	"q",
+	"rp",
+	"rt",
+	"ruby",
+	"s",
+	"samp",
+	"script",
+	"search",
+	"section",
+	"select",
+	"slot",
+	"small",
+	"source",
+	"span",
+	"strong",
+	"style",
+	"sub",
+	"summary",
+	"sup",
+	"table",
+	"tbody",
+	"td",
+	"template",
+	"textarea",
+	"tfoot",
+	"th",
+	"thead",
+	"time",
+	"title",
+	"tr",
+	"track",
+	"u",
+	"ul",
+	"var",
+	"video",
+	"wbr"
+]);
+function findComponentTags(templateContent) {
+	const tags = /* @__PURE__ */ new Set();
+	const pascalRe = /<([A-Z][a-zA-Z0-9]*)\b/g;
+	let m;
+	while ((m = pascalRe.exec(templateContent)) !== null) tags.add(m[1]);
+	const kebabRe = /<([a-z][a-z0-9]*(?:-[a-z0-9]+)+)\b/g;
+	while ((m = kebabRe.exec(templateContent)) !== null) if (!HTML_ELEMENTS.has(m[1])) tags.add(m[1]);
+	return [...tags];
+}
+async function buildComponentMap(root, componentDirs) {
+	const map = /* @__PURE__ */ new Map();
+	const allSources = [...[resolve(__dirname, "../components"), resolve(root, "components")].filter(existsSync).map((path) => ({
+		path,
+		prefix: void 0,
+		pathPrefix: true
+	})), ...componentDirs.filter((s) => existsSync(s.path))];
+	for (const source of allSources) {
+		const files = await glob(["**/*.vue"], {
+			cwd: source.path,
+			absolute: true
+		});
+		for (const file of files) {
+			const name = componentNameFromPath({
+				filePath: file,
+				dirRoot: source.path,
+				prefix: source.prefix,
+				pathPrefix: source.pathPrefix
+			});
+			map.set(name.toLowerCase(), file);
+		}
+	}
+	return map;
+}
+//#endregion
+export { HTML_ELEMENTS, buildComponentMap, findComponentTags, isFrameworkComponent, parseSfcBlocks };
+
+//# sourceMappingURL=sfc-utils.js.map

@@ -1,0 +1,35 @@
+import { ChildNode } from "domhandler";
+
+//#region src/transformers/inlineLink.d.ts
+/**
+ * Inline `<link rel="stylesheet">` tags as `<style>` tags.
+ *
+ * - Local file paths are inlined when `filePath` is provided (resolved
+ *   relative to it).
+ * - Remote URLs (`http://` / `https://`) are only inlined when the link
+ *   carries an `inline` attribute, e.g. `<link rel="stylesheet" inline href="…">`.
+ *
+ * @param html     HTML string to transform.
+ * @param filePath Path of the source file the HTML came from, used as the
+ *                 base for resolving relative `href` values. Required for
+ *                 local-file inlining; remote `inline` links work without it.
+ * @returns        The transformed HTML string.
+ *
+ * @example
+ * import { inlineLink } from '@maizzle/framework'
+ *
+ * const out = await inlineLink(
+ *   '<link rel="stylesheet" href="./styles.css">',
+ *   '/path/to/template.html',
+ * )
+ */
+declare function inlineLink(html: string, filePath?: string): Promise<string>;
+/**
+ * DOM-form of {@link inlineLink} used by the internal transformer pipeline.
+ * Takes a parsed DOM, returns a parsed DOM — avoids redundant
+ * serialize/parse round-trips when chained with other transformers.
+ */
+declare function inlineLinkDom(dom: ChildNode[], filePath?: string): Promise<ChildNode[]>;
+//#endregion
+export { inlineLink, inlineLinkDom };
+//# sourceMappingURL=inlineLink.d.ts.map

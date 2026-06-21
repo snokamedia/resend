@@ -1,0 +1,611 @@
+/*
+  Prose — email-safe typography for rendered HTML content.
+*/
+@custom-variant prose-headings (& :is(h1, h2, h3, h4, h5, h6));
+@custom-variant prose-lead (& :is([class~="lead"]));
+@custom-variant prose-h1 (& h1);
+@custom-variant prose-h2 (& h2);
+@custom-variant prose-h3 (& h3);
+@custom-variant prose-h4 (& h4);
+@custom-variant prose-h5 (& h5);
+@custom-variant prose-h6 (& h6);
+@custom-variant prose-p (& p);
+@custom-variant prose-a (& a);
+@custom-variant prose-blockquote (& blockquote);
+@custom-variant prose-figure (& figure);
+@custom-variant prose-figcaption (& figcaption);
+@custom-variant prose-strong (& strong);
+@custom-variant prose-em (& em);
+@custom-variant prose-kbd (& kbd);
+@custom-variant prose-code (& :not(pre) > code);
+@custom-variant prose-pre (& pre);
+@custom-variant prose-ol (& ol);
+@custom-variant prose-ul (& ul);
+@custom-variant prose-li (& li);
+@custom-variant prose-dl (& dl);
+@custom-variant prose-dt (& dt);
+@custom-variant prose-dd (& dd);
+@custom-variant prose-table (& table);
+@custom-variant prose-thead (& thead);
+@custom-variant prose-tr (& tr);
+@custom-variant prose-th (& th);
+@custom-variant prose-td (& td);
+@custom-variant prose-img (& img);
+@custom-variant prose-picture (& picture);
+@custom-variant prose-video (& video);
+@custom-variant prose-hr (& hr);
+
+/* --- Base prose — structural defaults --- */
+@utility prose {
+  @apply text-base;
+
+  /* Strip top margin on first child — email clients don't reliably collapse margins */
+  & > :first-child {
+    margin-top: 0;
+  }
+
+  & p {
+    margin-top: 1.25em;
+    margin-bottom: 0;
+  }
+
+  & [class~="lead"] {
+    margin-top: 1.2em;
+    margin-bottom: 0;
+  }
+
+  & blockquote {
+    margin-top: 1.6em;
+    margin-bottom: 0;
+  }
+
+  & h2 {
+    margin-top: 2em;
+    margin-bottom: 0;
+  }
+
+  & h3 {
+    margin-top: 1.6em;
+    margin-bottom: 0;
+  }
+
+  & h4 {
+    margin-top: 1.5em;
+    margin-bottom: 0;
+  }
+
+  & h5,
+  & h6 {
+    margin-top: 1.5em;
+    margin-bottom: 0;
+  }
+
+  & img,
+  & picture,
+  & video {
+    margin-top: 2em;
+    margin-bottom: 0;
+  }
+
+  & img {
+    @apply max-w-full align-middle;
+  }
+
+  & figure {
+    margin-top: 2em;
+    margin-bottom: 0;
+  }
+
+  & figcaption {
+    margin-top: 0.8571em;
+    margin-bottom: 0;
+  }
+
+  & pre {
+    margin-top: 1.7143em;
+    margin-bottom: 0;
+    padding: 1em;
+  }
+
+  & ul,
+  & ol {
+    @apply pl-6;
+    margin-top: 1.25em;
+    margin-bottom: 0;
+  }
+
+  & ul {
+    list-style-type: disc;
+  }
+
+  & ol {
+    list-style-type: decimal;
+  }
+
+  & li {
+    margin-top: 0.5em;
+    margin-bottom: 0;
+  }
+
+  & ul ul,
+  & ul ol,
+  & ol ul,
+  & ol ol {
+    margin-top: 0.75em;
+    margin-bottom: 0;
+  }
+
+  & dl {
+    margin-top: 1.25em;
+    margin-bottom: 0;
+  }
+
+  & dt {
+    margin-top: 1.25em;
+    margin-bottom: 0;
+  }
+
+  & dd {
+    margin-top: 0.5em;
+    margin-bottom: 0;
+    padding-left: 1.625em;
+  }
+
+  & hr {
+    @apply border-0;
+    margin-top: 3em;
+    margin-bottom: 0;
+  }
+
+  & table {
+    @apply w-full;
+    border-collapse: collapse;
+    margin-top: 2em;
+    margin-bottom: 0;
+  }
+}
+
+/* --- Size presets --- */
+@utility prose-sm {
+  @apply text-sm;
+
+  & > :first-child {
+    margin-top: 0;
+  }
+
+  & p {
+    margin-top: 1.1429em;
+    margin-bottom: 0;
+  }
+
+  & [class~="lead"] {
+    margin-top: 0.8889em;
+    margin-bottom: 0;
+  }
+
+  & blockquote {
+    margin-top: 1.3333em;
+    margin-bottom: 0;
+  }
+
+  & h1 {
+    @apply text-3xl;
+    margin-bottom: 0;
+  }
+
+  & h2 {
+    @apply text-xl;
+    margin-top: 1.6em;
+    margin-bottom: 0;
+  }
+
+  & h3 {
+    @apply text-lg;
+    margin-top: 1.5556em;
+    margin-bottom: 0;
+  }
+
+  & h4 {
+    @apply text-sm;
+    margin-top: 1.4286em;
+    margin-bottom: 0;
+  }
+
+  & img,
+  & picture,
+  & video {
+    margin-top: 1.7143em;
+    margin-bottom: 0;
+  }
+
+  & figure {
+    margin-top: 1.7143em;
+    margin-bottom: 0;
+  }
+
+  & figcaption {
+    margin-top: 0.6667em;
+    margin-bottom: 0;
+  }
+
+  & pre,
+  & :not(pre) > code {
+    @apply text-xs;
+  }
+
+  & pre {
+    margin-top: 1.6667em;
+    margin-bottom: 0;
+    padding: 0.875em;
+  }
+
+  & ul,
+  & ol {
+    margin-top: 1.1429em;
+    margin-bottom: 0;
+  }
+
+  & li {
+    margin-top: 0.2857em;
+    margin-bottom: 0;
+  }
+
+  & dl {
+    margin-top: 1.1429em;
+    margin-bottom: 0;
+  }
+
+  & dt {
+    margin-top: 1.1429em;
+    margin-bottom: 0;
+  }
+
+  & dd {
+    margin-top: 0.2857em;
+    margin-bottom: 0;
+  }
+
+  & hr {
+    margin-top: 2.8571em;
+    margin-bottom: 0;
+  }
+
+  & table {
+    @apply text-xs;
+    margin-top: 1.7143em;
+    margin-bottom: 0;
+  }
+}
+
+@utility prose-base {
+  @apply text-base;
+
+  & > :first-child {
+    margin-top: 0;
+  }
+
+  & p {
+    margin-top: 1.25em;
+    margin-bottom: 0;
+  }
+
+  & [class~="lead"] {
+    margin-top: 1.2em;
+    margin-bottom: 0;
+  }
+
+  & blockquote {
+    margin-top: 1.6em;
+    margin-bottom: 0;
+  }
+
+  & h1 {
+    @apply text-4xl;
+    margin-bottom: 0;
+  }
+
+  & h2 {
+    @apply text-2xl;
+    margin-top: 2em;
+    margin-bottom: 0;
+  }
+
+  & h3 {
+    @apply text-xl;
+    margin-top: 1.6em;
+    margin-bottom: 0;
+  }
+
+  & h4 {
+    @apply text-base;
+    margin-top: 1.5em;
+    margin-bottom: 0;
+  }
+
+  & img,
+  & picture,
+  & video {
+    margin-top: 2em;
+    margin-bottom: 0;
+  }
+
+  & figure {
+    margin-top: 2em;
+    margin-bottom: 0;
+  }
+
+  & figcaption {
+    margin-top: 0.8571em;
+    margin-bottom: 0;
+  }
+
+  & pre,
+  & :not(pre) > code {
+    @apply text-sm;
+  }
+
+  & pre {
+    margin-top: 1.7143em;
+    margin-bottom: 0;
+    padding: 1em;
+  }
+
+  & ul,
+  & ol {
+    margin-top: 1.25em;
+    margin-bottom: 0;
+  }
+
+  & li {
+    margin-top: 0.5em;
+    margin-bottom: 0;
+  }
+
+  & dl {
+    margin-top: 1.25em;
+    margin-bottom: 0;
+  }
+
+  & dt {
+    margin-top: 1.25em;
+    margin-bottom: 0;
+  }
+
+  & dd {
+    margin-top: 0.5em;
+    margin-bottom: 0;
+  }
+
+  & hr {
+    margin-top: 3em;
+    margin-bottom: 0;
+  }
+
+  & table {
+    @apply text-sm;
+    margin-top: 2em;
+    margin-bottom: 0;
+  }
+}
+
+@utility prose-lg {
+  @apply text-lg;
+
+  & > :first-child {
+    margin-top: 0;
+  }
+
+  & p {
+    margin-top: 1.3333em;
+    margin-bottom: 0;
+  }
+
+  & [class~="lead"] {
+    margin-top: 1.0909em;
+    margin-bottom: 0;
+  }
+
+  & blockquote {
+    margin-top: 1.6667em;
+    margin-bottom: 0;
+  }
+
+  & h1 {
+    @apply text-5xl;
+    margin-bottom: 0;
+  }
+
+  & h2 {
+    @apply text-3xl;
+    margin-top: 1.8667em;
+    margin-bottom: 0;
+  }
+
+  & h3 {
+    @apply text-2xl;
+    margin-top: 1.6667em;
+    margin-bottom: 0;
+  }
+
+  & h4 {
+    @apply text-lg;
+    margin-top: 1.7778em;
+    margin-bottom: 0;
+  }
+
+  & img,
+  & picture,
+  & video {
+    margin-top: 1.7778em;
+    margin-bottom: 0;
+  }
+
+  & figure {
+    margin-top: 1.7778em;
+    margin-bottom: 0;
+  }
+
+  & figcaption {
+    margin-top: 1em;
+    margin-bottom: 0;
+  }
+
+  & pre,
+  & :not(pre) > code {
+    @apply text-base;
+  }
+
+  & pre {
+    margin-top: 2em;
+    margin-bottom: 0;
+    padding: 1.125em;
+  }
+
+  & ul,
+  & ol {
+    margin-top: 1.3333em;
+    margin-bottom: 0;
+  }
+
+  & li {
+    margin-top: 0.6667em;
+    margin-bottom: 0;
+  }
+
+  & dl {
+    margin-top: 1.3333em;
+    margin-bottom: 0;
+  }
+
+  & dt {
+    margin-top: 1.3333em;
+    margin-bottom: 0;
+  }
+
+  & dd {
+    margin-top: 0.6667em;
+    margin-bottom: 0;
+  }
+
+  & hr {
+    margin-top: 3.1111em;
+    margin-bottom: 0;
+  }
+
+  & table {
+    @apply text-base;
+    margin-top: 1.7778em;
+    margin-bottom: 0;
+  }
+}
+
+@utility prose-xl {
+  @apply text-xl;
+
+  & > :first-child {
+    margin-top: 0;
+  }
+
+  & p {
+    margin-top: 1.2em;
+    margin-bottom: 0;
+  }
+
+  & [class~="lead"] {
+    margin-top: 1em;
+    margin-bottom: 0;
+  }
+
+  & blockquote {
+    margin-top: 1.6em;
+    margin-bottom: 0;
+  }
+
+  & h1 {
+    @apply text-6xl;
+    margin-bottom: 0;
+  }
+
+  & h2 {
+    @apply text-4xl;
+    margin-top: 1.5556em;
+    margin-bottom: 0;
+  }
+
+  & h3 {
+    @apply text-3xl;
+    margin-top: 1.6em;
+    margin-bottom: 0;
+  }
+
+  & h4 {
+    @apply text-xl;
+    margin-top: 1.8em;
+    margin-bottom: 0;
+  }
+
+  & img,
+  & picture,
+  & video {
+    margin-top: 2em;
+    margin-bottom: 0;
+  }
+
+  & figure {
+    margin-top: 2em;
+    margin-bottom: 0;
+  }
+
+  & figcaption {
+    margin-top: 1em;
+    margin-bottom: 0;
+  }
+
+  & pre,
+  & :not(pre) > code {
+    @apply text-lg;
+  }
+
+  & pre {
+    margin-top: 2em;
+    margin-bottom: 0;
+    padding: 1.25em;
+  }
+
+  & ul,
+  & ol {
+    margin-top: 1.2em;
+    margin-bottom: 0;
+  }
+
+  & li {
+    margin-top: 0.6em;
+    margin-bottom: 0;
+  }
+
+  & dl {
+    margin-top: 1.2em;
+    margin-bottom: 0;
+  }
+
+  & dt {
+    margin-top: 1.2em;
+    margin-bottom: 0;
+  }
+
+  & dd {
+    margin-top: 0.6em;
+    margin-bottom: 0;
+  }
+
+  & hr {
+    margin-top: 2.8em;
+    margin-bottom: 0;
+  }
+
+  & table {
+    @apply text-lg;
+    margin-top: 2em;
+    margin-bottom: 0;
+  }
+}

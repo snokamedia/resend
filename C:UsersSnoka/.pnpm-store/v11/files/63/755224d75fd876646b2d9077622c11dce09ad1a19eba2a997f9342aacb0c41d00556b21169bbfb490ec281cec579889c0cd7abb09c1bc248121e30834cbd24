@@ -1,0 +1,74 @@
+import { parse } from "../utils/ast/parser.js";
+import { walk } from "../utils/ast/walker.js";
+import { serialize } from "../utils/ast/serializer.js";
+import "../utils/ast/index.js";
+import { defu as defu$1 } from "defu";
+//#region src/transformers/entities.ts
+const DEFAULT_ENTITIES = {
+	"‍": "&zwj;",
+	"‌": "&zwnj;",
+	"\xA0": "&nbsp;",
+	"­": "&shy;",
+	"​": "&#8203;",
+	" ": "&#8199;",
+	"﻿": "&#65279;",
+	"͏": "&#847;",
+	" ": "&emsp;",
+	"\u2028": "&LineSeparator;",
+	"\u2029": "&ParagraphSeparator;",
+	"·": "&middot;",
+	"–": "&ndash;",
+	"—": "&mdash;",
+	"‘": "&lsquo;",
+	"’": "&rsquo;",
+	"“": "&ldquo;",
+	"”": "&rdquo;",
+	"«": "&laquo;",
+	"»": "&raquo;",
+	"•": "&bull;",
+	"‹": "&lsaquo;",
+	"›": "&rsaquo;"
+};
+/**
+* Replace literal Unicode characters in text nodes with their HTML entity
+* equivalents (zero-width joiners, non-breaking spaces, smart quotes,
+* dashes, etc.) for better email-client rendering.
+*
+* @param html   HTML string to transform.
+* @param custom Extra entries merged on top of the built-in entity map, or
+*               `false` to disable the transform. Defaults to `true`
+*               (built-ins only).
+* @returns      The transformed HTML string.
+*
+* @example
+* import { entities } from '@maizzle/framework'
+*
+* // Defaults only
+* entities('hello world') // → 'hello&nbsp;world'
+*
+* // Add a custom mapping
+* entities('© Maizzle', { '©': '&copy;' })
+*
+* // Disable the transform
+* entities('hello world', false)
+*/
+function entities(html, custom = true) {
+	return serialize(entitiesDom(parse(html), custom));
+}
+/**
+* DOM-form of {@link entities} used by the internal transformer pipeline.
+* Takes a parsed DOM, returns a parsed DOM — avoids redundant
+* serialize/parse round-trips when chained with other transformers.
+*/
+function entitiesDom(dom, custom = true) {
+	if (!custom) return dom;
+	const map = typeof custom === "object" ? defu$1(custom, DEFAULT_ENTITIES) : DEFAULT_ENTITIES;
+	walk(dom, (node) => {
+		if (node.type === "text") for (const [char, entity] of Object.entries(map)) node.data = node.data.split(char).join(entity);
+	});
+	return dom;
+}
+//#endregion
+export { entities, entitiesDom };
+
+//# sourceMappingURL=entities.js.map

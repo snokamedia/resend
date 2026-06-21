@@ -1,0 +1,37 @@
+import { EntitiesConfig } from "../types/config.js";
+import { ChildNode } from "domhandler";
+
+//#region src/transformers/entities.d.ts
+/**
+ * Replace literal Unicode characters in text nodes with their HTML entity
+ * equivalents (zero-width joiners, non-breaking spaces, smart quotes,
+ * dashes, etc.) for better email-client rendering.
+ *
+ * @param html   HTML string to transform.
+ * @param custom Extra entries merged on top of the built-in entity map, or
+ *               `false` to disable the transform. Defaults to `true`
+ *               (built-ins only).
+ * @returns      The transformed HTML string.
+ *
+ * @example
+ * import { entities } from '@maizzle/framework'
+ *
+ * // Defaults only
+ * entities('hello world') // → 'hello&nbsp;world'
+ *
+ * // Add a custom mapping
+ * entities('© Maizzle', { '©': '&copy;' })
+ *
+ * // Disable the transform
+ * entities('hello world', false)
+ */
+declare function entities(html: string, custom?: EntitiesConfig): string;
+/**
+ * DOM-form of {@link entities} used by the internal transformer pipeline.
+ * Takes a parsed DOM, returns a parsed DOM — avoids redundant
+ * serialize/parse round-trips when chained with other transformers.
+ */
+declare function entitiesDom(dom: ChildNode[], custom?: EntitiesConfig): ChildNode[];
+//#endregion
+export { entities, entitiesDom };
+//# sourceMappingURL=entities.d.ts.map

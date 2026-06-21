@@ -1,0 +1,163 @@
+import { parse } from "../utils/ast/parser.js";
+import { serialize } from "../utils/ast/serializer.js";
+import "../utils/ast/index.js";
+import { inlineLinkDom } from "./inlineLink.js";
+import { tailwindComponent } from "./tailwindComponent.js";
+import { tailwindcss } from "./tailwindcss.js";
+import { safeSelectorsDom } from "./safeSelectors.js";
+import { attributeToStyleDom } from "./attributeToStyle.js";
+import { inlineCssDom } from "./inlineCss.js";
+import { msoPlaceholders } from "./msoPlaceholders.js";
+import { columnWidth } from "./columnWidth.js";
+import { imgWidthDom } from "./imgWidth.js";
+import { removeAttributesDom } from "./removeAttributes.js";
+import { shorthandCssDom } from "./shorthandCss.js";
+import { sixHexDom } from "./sixHex.js";
+import { addAttributesDom } from "./addAttributes.js";
+import { filtersDom } from "./filters/index.js";
+import { baseDom } from "./base.js";
+import { entitiesDom } from "./entities.js";
+import { urlQueryDom } from "./urlQuery.js";
+import { purgeCssDom } from "./purgeCss.js";
+import { replaceStrings } from "./replaceStrings.js";
+import { format } from "./format.js";
+import { minifyCodeInline } from "./minifyCodeInline.js";
+import { minify } from "./minify.js";
+//#region src/transformers/index.ts
+/**
+* Run all Maizzle transformers on the rendered HTML.
+*
+* The HTML is parsed into a DOM once at the start and passed through all
+* DOM-based transformers as a shared `ChildNode[]`. After all DOM transformers
+* complete, the DOM is serialized back to a string exactly once.
+*
+* String-only transformers (those that rely on external tools that require a
+* raw HTML string) then run on the serialized output.
+*
+* Transformers run in a specific order:
+* 0.  Inline link stylesheets — replace `<link rel="stylesheet">` with `<style>` tags
+* 1.  Tailwind CSS — compile CSS, lower syntax, optimize (cleanup + merge media queries)
+* 2.  Safe class names
+* 3.  Attribute to style
+* 4.  CSS inliner
+* 5.  Remove attributes
+* 6.  Shorthand CSS
+* 7.  Six-digit HEX
+* 8.  Add attributes
+* 9.  Filters
+* 10. Base URL
+* 11. URL query
+* 12. Purge CSS (serializes/parses internally around email-comb)
+* 13. Entities
+* + Vue-generated comments stripped here (on serialized string)
+* 14. Replace strings
+* 15. Prettify
+* 16. Minify
+*/
+async function runTransformers(html, config, filePath, doctype, tailwindBlocks) {
+	/**
+	* Per-transformer skip map — only honored when useTransformers is an object.
+	* Whole-pipeline opt-out (`useTransformers === false`) is handled upstream
+	* in build.ts / render so we never reach this function in that case.
+	*
+	* A toggle set to `true` *force-enables* its transformer for this run
+	* by layering on the matching config slice (e.g. `prettify: true`
+	* sets `html.format = true`). This only applies to transformers
+	* whose enable flag is a plain boolean — data-driven ones
+	* (filters, baseURL, urlQuery, etc.) need actual config
+	* values, so a bare `true` for those is a no-op.
+	*/
+	const toggles = typeof config.useTransformers === "object" ? config.useTransformers : null;
+	const enabled = (key) => toggles?.[key] !== false;
+	let effective = config;
+	if (toggles) {
+		const cssOver = {};
+		const htmlOver = {};
+		if (toggles.inlineCss === true) cssOver.inline = true;
+		if (toggles.purgeCss === true) cssOver.purge = true;
+		if (toggles.safeSelectors === true) cssOver.safe = true;
+		if (toggles.shorthandCss === true) cssOver.shorthand = true;
+		if (toggles.sixHex === true) cssOver.sixHex = true;
+		if (toggles.prettify === true) htmlOver.format = true;
+		if (toggles.minify === true) htmlOver.minify = true;
+		if (toggles.entities === true) htmlOver.decodeEntities = true;
+		if (Object.keys(cssOver).length || Object.keys(htmlOver).length) effective = {
+			...config,
+			css: {
+				...config.css,
+				...cssOver
+			},
+			html: {
+				...config.html,
+				...htmlOver
+			}
+		};
+	}
+	let dom = parse(html);
+	dom = await inlineLinkDom(dom, filePath);
+	if (tailwindBlocks?.length) dom = await tailwindComponent(dom, tailwindBlocks, effective, filePath);
+	dom = await tailwindcss(dom, effective, filePath);
+	if (enabled("safeSelectors")) dom = safeSelectorsDom(dom, effective.css);
+	if (enabled("attributeToStyle") && typeof effective.css?.inline === "object" && effective.css.inline.attributeToStyle) dom = attributeToStyleDom(dom, effective.css.inline.attributeToStyle);
+	if (enabled("inlineCss") && effective.css?.inline) {
+		const inlineOptions = typeof effective.css.inline === "object" ? effective.css.inline : {};
+		dom = inlineCssDom(dom, inlineOptions);
+	}
+	dom = msoPlaceholders(dom);
+	dom = columnWidth(dom);
+	dom = imgWidthDom(dom);
+	if (enabled("removeAttributes")) {
+		const removeRules = effective.html?.attributes?.remove;
+		dom = removeAttributesDom(dom, Array.isArray(removeRules) ? removeRules : []);
+	}
+	if (enabled("shorthandCss") && effective.css?.shorthand) {
+		const shorthandOptions = typeof effective.css.shorthand === "object" ? effective.css.shorthand : {};
+		dom = shorthandCssDom(dom, shorthandOptions);
+	}
+	if (enabled("sixHex") && effective.css?.sixHex !== false) dom = sixHexDom(dom);
+	if (enabled("addAttributes")) dom = addAttributesDom(dom, effective.html?.attributes);
+	if (enabled("filters")) dom = filtersDom(dom, effective.filters);
+	if (enabled("baseURL") && effective.url?.base) dom = baseDom(dom, effective.url.base);
+	if (enabled("urlQuery") && effective.url?.query && Object.keys(effective.url.query).length > 0) {
+		const { _options: queryOptions, ...queryParams } = effective.url.query;
+		dom = urlQueryDom(dom, queryParams, queryOptions ?? {});
+	}
+	if (enabled("purgeCss") && effective.css?.purge) {
+		const purgeOptions = typeof effective.css.purge === "object" ? effective.css.purge : {};
+		dom = purgeCssDom(dom, purgeOptions);
+	}
+	if (enabled("entities")) dom = entitiesDom(dom, effective.html?.decodeEntities);
+	const isXhtml = doctype ? /xhtml/i.test(doctype) : false;
+	let result = serialize(dom, { selfClosingTags: isXhtml });
+	if (enabled("replaceStrings")) result = replaceStrings(result, effective);
+	const minifyWillRun = enabled("minify") && !!effective.html?.minify;
+	if (enabled("prettify") && !minifyWillRun && effective.html?.format) {
+		const formatOptions = typeof effective.html.format === "object" ? effective.html.format : {};
+		result = await format(result, formatOptions);
+	}
+	if (enabled("minify") && effective.html?.minify) {
+		const minifyOptions = typeof effective.html.minify === "object" ? effective.html.minify : {};
+		result = minify(result, minifyOptions);
+	}
+	/**
+	* Strip self-closing slashes for HTML5 doctypes, but preserve content
+	* inside MSO conditional comments (XML-ish, case/syntax sensitive).
+	* MUST run BEFORE minifyCodeInline: at this point, CodeInline's
+	* shiki output is still marker-encoded (§MZLT§/§MZGT§), so any
+	* ` />` in the highlighted source code (e.g. a Vue self-close
+	* tag) hasn't materialized yet and can't be mistakenly
+	* stripped from inside a `<code>` element.
+	*/
+	if (!isXhtml) result = result.replace(/<!--\[if [^\]]*\]>[\s\S]*?<!\[endif\]-->|( \/>)/g, (match, selfClose) => selfClose ? ">" : match);
+	/**
+	* 16.5. Strip whitespace inside `data-minify-inline` markers (CodeInline's
+	* Shiki output, etc.). Runs after format/minify so it cleans up the
+	* pretty-printer's indentation between sibling tags.
+	*/
+	result = minifyCodeInline(result);
+	return result;
+}
+//#endregion
+export { runTransformers };
+
+//# sourceMappingURL=index.js.map

@@ -1,0 +1,12 @@
+//#region src/render/active.ts
+let activeRenderer = null;
+function setActiveRenderer(renderer) {
+	activeRenderer = renderer;
+}
+function getActiveRenderer() {
+	return activeRenderer;
+}
+//#endregion
+export { getActiveRenderer, setActiveRenderer };
+
+//# sourceMappingURL=active.js.map

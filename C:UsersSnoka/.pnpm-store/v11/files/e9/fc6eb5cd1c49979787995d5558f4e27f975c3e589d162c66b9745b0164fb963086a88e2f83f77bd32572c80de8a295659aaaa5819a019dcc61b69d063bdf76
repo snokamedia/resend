@@ -1,0 +1,117 @@
+import { parse } from "../utils/ast/parser.js";
+import { walk } from "../utils/ast/walker.js";
+import { serialize } from "../utils/ast/serializer.js";
+import "../utils/ast/index.js";
+import { defu as defu$1 } from "defu";
+//#region src/transformers/addAttributes.ts
+/**
+* Default attributes to add to elements.
+*/
+const DEFAULT_ATTRIBUTES = {
+	table: {
+		cellpadding: 0,
+		cellspacing: 0,
+		role: "none"
+	},
+	img: { alt: "" }
+};
+/**
+* Add attributes transformer.
+*
+* Automatically adds attributes to HTML elements based on CSS selectors.
+*
+* Default attributes (can be disabled by setting `attributes.add` to false):
+* - table: cellpadding="0", cellspacing="0", role="none"
+* - img: alt=""
+*
+* Supports tag, class, id, and attribute selectors.
+* Multiple selectors can be specified by comma-separating them.
+*
+* @param html   HTML string to transform.
+* @param config Attributes config (see {@link AttributesConfig}).
+* @returns      The transformed HTML string.
+*
+* @example
+* import { addAttributes } from '@maizzle/framework'
+*
+* const out = addAttributes('<div></div>', {
+*   add: {
+*     div: { role: 'article' },
+*     '.test': { editable: true },
+*     '#header': { 'data-id': 'main' },
+*     'div, p': { class: 'content' },
+*   },
+* })
+*/
+function addAttributes(html, config = {}) {
+	return serialize(addAttributesDom(parse(html), config));
+}
+/**
+* DOM-form of {@link addAttributes} used by the internal transformer pipeline.
+* Takes a parsed DOM, returns a parsed DOM — avoids redundant
+* serialize/parse round-trips when chained with other transformers.
+*/
+function addAttributesDom(dom, config = {}) {
+	const addConfig = config.add;
+	if (addConfig === false) return dom;
+	const attributesToAdd = defu$1(typeof addConfig === "object" ? addConfig : {}, DEFAULT_ATTRIBUTES);
+	for (const [selectorPattern, attributes] of Object.entries(attributesToAdd)) {
+		if (attributes === false) continue;
+		const selectors = selectorPattern.split(",").map((s) => s.trim());
+		walk(dom, (node) => {
+			const el = node;
+			if (!el.name) return;
+			if (selectors.some((selector) => elementMatches(el, selector))) {
+				if (!el.attribs) el.attribs = {};
+				for (const [attrName, attrValue] of Object.entries(attributes)) {
+					if (attrValue === false) continue;
+					if (attrName === "class" && el.attribs.class) {
+						const existingClasses = el.attribs.class.split(/\s+/).filter(Boolean);
+						const newClasses = String(attrValue).split(/\s+/).filter(Boolean);
+						const mergedClasses = [...new Set([...existingClasses, ...newClasses])];
+						if (mergedClasses.join(" ") !== el.attribs.class) el.attribs.class = mergedClasses.join(" ");
+					} else if (!(attrName in el.attribs)) el.attribs[attrName] = String(attrValue);
+				}
+			}
+		});
+	}
+	return dom;
+}
+/**
+* Check if an element matches a CSS selector.
+* Supports: tag, .class, #id, [attribute], [attribute=value]
+*/
+function elementMatches(el, selector) {
+	selector = selector.trim();
+	const attrMatch = selector.match(/^\[([^\]=]+)(?:=([^\]]*))?\]$/);
+	if (attrMatch) {
+		const [, attrName, attrValue] = attrMatch;
+		if (attrValue === void 0) return attrName in el.attribs;
+		else return el.attribs?.[attrName] === attrValue;
+	}
+	if (selector.startsWith(".")) {
+		const className = selector.slice(1);
+		return (el.attribs?.class?.split(/\s+/) || []).includes(className);
+	}
+	if (selector.startsWith("#")) {
+		const id = selector.slice(1);
+		return el.attribs?.id === id;
+	}
+	const tagAttrMatch = selector.match(/^([a-z][a-z0-9]*)\[([^\]]+)\]$/i);
+	if (tagAttrMatch) {
+		const [, tagName, attrPart] = tagAttrMatch;
+		if (el.name !== tagName) return false;
+		const attrEqMatch = attrPart.match(/^([^=]+)(?:=(.*))?$/);
+		if (attrEqMatch) {
+			const [, attrName, attrValue] = attrEqMatch;
+			if (attrValue === void 0) return attrName in el.attribs;
+			else return el.attribs?.[attrName] === attrValue;
+		}
+		return false;
+	}
+	return el.name === selector;
+}
+//#endregion
+export { addAttributes, addAttributesDom };
+
+//# sourceMappingURL=addAttributes.js.map
